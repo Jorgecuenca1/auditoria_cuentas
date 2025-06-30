@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Bienvenido{% endblock %}
+{% block content %}
+<div class="container text-center mt-5">
+  <h1 class="display-4 mb-4">Bienvenido a Auditoría de Cuentas</h1>
+  <p class="lead mb-5">Gestiona y audita tus cuentas de manera eficiente.</p>
+  {% if user.is_authenticated %}
+    <a href="/dashboard/" class="btn btn-success btn-lg">Ir al Dashboard</a>
+  {% else %}
+    <a href="/accounts/login/" class="btn btn-primary btn-lg">Iniciar Sesión</a>
+  {% endif %}
+</div>
+{% endblock %} 
