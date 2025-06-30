@@ -1,13 +1,89 @@
 {% extends 'base.html' %}
-{% block title %}Bienvenido{% endblock %}
+{% block title %}Bienvenido a Auditoría de Cuentas{% endblock %}
 {% block content %}
-<div class="container text-center mt-5">
-  <h1 class="display-4 mb-4">Bienvenido a Auditoría de Cuentas</h1>
-  <p class="lead mb-5">Gestiona y audita tus cuentas de manera eficiente.</p>
-  {% if user.is_authenticated %}
-    <a href="/dashboard/" class="btn btn-success btn-lg">Ir al Dashboard</a>
-  {% else %}
-    <a href="/accounts/login/" class="btn btn-primary btn-lg">Iniciar Sesión</a>
-  {% endif %}
+<div class="container py-5">
+  <div class="row align-items-center mb-5">
+    <div class="col-md-6 text-center text-md-start">
+      <h1 class="display-3 fw-bold mb-3 text-primary">Auditoría de Cuentas Médicas</h1>
+      <p class="lead mb-4">La solución integral para la gestión, auditoría y control de cuentas médicas en Colombia. Cumple con la normatividad vigente y optimiza tus procesos con tecnología de punta.</p>
+      {% if user.is_authenticated %}
+        <a href="/dashboard/" class="btn btn-success btn-lg me-2">Ir al Dashboard</a>
+      {% else %}
+        <a href="/accounts/login/" class="btn btn-primary btn-lg me-2">Iniciar Sesión</a>
+      {% endif %}
+      <a href="#funcionalidades" class="btn btn-outline-primary btn-lg">Ver Funcionalidades</a>
+    </div>
+    <div class="col-md-6 text-center">
+      <img src="https://cdn.pixabay.com/photo/2017/08/06/00/03/people-2583493_1280.jpg" alt="Auditoría Médica" class="img-fluid rounded shadow">
+    </div>
+  </div>
+
+  <div class="row mb-5" id="beneficios">
+    <div class="col-12 text-center mb-4">
+      <h2 class="fw-bold">¿Por qué elegirnos?</h2>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title text-primary"><i class="bi bi-shield-check"></i> Cumplimiento Legal</h5>
+          <p class="card-text">Cumplimos con la normatividad colombiana (Resolución 3047 de 2008, 1995 de 1999, 1604 de 2013 y más) para la auditoría y gestión de cuentas médicas.</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title text-primary"><i class="bi bi-graph-up-arrow"></i> Eficiencia y Control</h5>
+          <p class="card-text">Automatiza procesos, reduce errores y mejora la trazabilidad de tus auditorías y glosas con reportes claros y en tiempo real.</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title text-primary"><i class="bi bi-people"></i> Soporte y Actualización</h5>
+          <p class="card-text">Equipo experto en normatividad y tecnología, soporte personalizado y actualizaciones constantes según cambios legales.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mb-5" id="funcionalidades">
+    <div class="col-12 text-center mb-4">
+      <h2 class="fw-bold">Funcionalidades Principales</h2>
+      <p class="text-muted">Todo lo que necesitas para auditar cuentas médicas según la ley colombiana</p>
+    </div>
+    <div class="col-md-6">
+      <ul class="list-group list-group-flush fs-5">
+        <li class="list-group-item"><i class="bi bi-file-earmark-text"></i> Radicación y gestión de facturas electrónicas</li>
+        <li class="list-group-item"><i class="bi bi-clipboard-check"></i> Auditoría médica y administrativa</li>
+        <li class="list-group-item"><i class="bi bi-exclamation-circle"></i> Gestión integral de glosas y respuestas</li>
+        <li class="list-group-item"><i class="bi bi-wallet2"></i> Control de cartera y conciliaciones</li>
+        <li class="list-group-item"><i class="bi bi-bar-chart"></i> Reportes automáticos y exportación de datos</li>
+        <li class="list-group-item"><i class="bi bi-lock"></i> Seguridad y control de acceso por roles</li>
+        <li class="list-group-item"><i class="bi bi-cloud-arrow-down"></i> Soporte de archivos y documentos</li>
+        <li class="list-group-item"><i class="bi bi-calendar-check"></i> Seguimiento de auditorías y tiempos de respuesta</li>
+      </ul>
+    </div>
+    <div class="col-md-6">
+      <ul class="list-group list-group-flush fs-5">
+        <li class="list-group-item"><i class="bi bi-check2-circle"></i> Cumplimiento de Resolución 3047/2008, 1995/1999, 1604/2013</li>
+        <li class="list-group-item"><i class="bi bi-person-lines-fill"></i> Gestión de usuarios: IPS, EPS, ET</li>
+        <li class="list-group-item"><i class="bi bi-envelope"></i> Notificaciones automáticas por email</li>
+        <li class="list-group-item"><i class="bi bi-search"></i> Búsqueda avanzada de facturas y glosas</li>
+        <li class="list-group-item"><i class="bi bi-layers"></i> Integración con sistemas externos (RIPS, HIS)</li>
+        <li class="list-group-item"><i class="bi bi-patch-check"></i> Validación de requisitos legales y técnicos</li>
+        <li class="list-group-item"><i class="bi bi-phone"></i> Acceso multiplataforma y responsive</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="row mb-5">
+    <div class="col-12 text-center">
+      <h2 class="fw-bold">¡Únete a los líderes en auditoría de cuentas médicas!</h2>
+      <p class="lead">Optimiza tu gestión, cumple la ley y recibe soporte experto. <br> Solicita una demo o contáctanos para más información.</p>
+      <a href="mailto:info@corpofuturo.org" class="btn btn-lg btn-success mt-3"><i class="bi bi-envelope-paper"></i> Solicitar Información</a>
+    </div>
+  </div>
 </div>
 {% endblock %} 
