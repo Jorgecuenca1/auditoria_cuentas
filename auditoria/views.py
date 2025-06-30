@@ -160,10 +160,10 @@ def glosas_pendientes(request):
     glosas = Glosa.objects.filter(estado="Pendiente")
     if request.user.profile.role == 'IPS':
         # Si es IPS, solo ver sus propias glosas
-        glosas = glosas.filter(factura__ips=request.user.profile.entidad_nombre)
+        glosas = glosas.filter(factura__ips=request.user.profile)
     elif request.user.profile.role == 'EPS':
         # Si es EPS, solo ver las glosas de su entidad
-        glosas = glosas.filter(factura__eps=request.user.profile.entidad_nombre)
+        glosas = glosas.filter(factura__eps=request.user.profile)
     
     glosas = glosas.order_by('-fecha_glosa')
     return render(request, 'auditoria/glosas_pendientes.html', {'glosas': glosas})
