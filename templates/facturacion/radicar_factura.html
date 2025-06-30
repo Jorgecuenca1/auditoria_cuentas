@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}Radicar Factura{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card shadow">
+      <div class="card-body">
+        <h3 class="card-title mb-4">Radicar Factura</h3>
+        <form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label">Número</label>
+            {{ form.numero }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">CUFE</label>
+            {{ form.cufe }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Fecha Emisión</label>
+            {{ form.fecha_emision }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">EPS</label>
+            {{ form.eps }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Valor Bruto</label>
+            {{ form.valor_bruto }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Archivo RIPS</label>
+            {{ form.archivo_rips }}
+          </div>
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-success">Radicar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

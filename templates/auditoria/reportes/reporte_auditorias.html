@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}Reporte de Auditorías{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Reporte de Auditorías</h2>
+
+    <!-- Resumen General -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Auditorías Finalizadas</h5>
+                    <h2 class="card-text">{{ total_auditadas }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <h5 class="card-title">Auditorías Pendientes</h5>
+                    <h2 class="card-text">{{ total_pendientes }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auditorías por IPS -->
+    <div class="card">
+        <div class="card-header">
+            <h4>Estado de Auditorías por IPS</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>IPS</th>
+                            <th>Estado</th>
+                            <th>Total Facturas</th>
+                            <th>Valor Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for auditoria in auditorias_por_ips %}
+                        <tr>
+                            <td>{{ auditoria.ips }}</td>
+                            <td>
+                                <span class="badge {% if auditoria.estado_auditoria == 'Finalizada' %}bg-success{% else %}bg-warning{% endif %}">
+                                    {{ auditoria.estado_auditoria }}
+                                </span>
+                            </td>
+                            <td>{{ auditoria.total }}</td>
+                            <td>${{ auditoria.valor_total|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center">No hay datos disponibles</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

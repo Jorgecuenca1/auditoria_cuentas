@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Facturas Radicadas{% endblock %}
+{% block content %}
+<h2 class="mb-4">Facturas Radicadas para Auditar</h2>
+<div class="table-responsive">
+  <table class="table table-bordered table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Número</th>
+        <th>CUFE</th>
+        <th>IPS</th>
+        <th>EPS</th>
+        <th>Valor Bruto</th>
+        <th>Fecha Radicación</th>
+        <th>Estado</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for factura in facturas %}
+      <tr>
+        <td>{{ factura.numero }}</td>
+        <td>{{ factura.cufe }}</td>
+        <td>{{ factura.ips }}</td>
+        <td>{{ factura.eps }}</td>
+        <td>${{ factura.valor_bruto|floatformat:2 }}</td>
+        <td>{{ factura.fecha_radicacion }}</td>
+        <td>{{ factura.estado_auditoria }}</td>
+        <td>
+          <a href="{% url 'auditoria:auditar_factura' factura.id %}" class="btn btn-primary btn-sm">Auditar</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="text-center">No hay facturas radicadas.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %} 

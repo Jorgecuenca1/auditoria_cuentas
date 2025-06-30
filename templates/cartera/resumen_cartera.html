@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Resumen de Cartera{% endblock %}
+{% block content %}
+<h2 class="mb-4">Resumen de Cartera</h2>
+<div class="table-responsive">
+  <table class="table table-bordered table-hover align-middle">
+    <thead class="table-light">
+      <tr><th>Factura</th><th>IPS</th><th>EPS</th><th>Valor Bruto</th><th>Estado Auditoría</th></tr>
+    </thead>
+    <tbody>
+    {% for factura in facturas %}
+      <tr>
+        <td>{{ factura.numero }}</td>
+        <td>{{ factura.ips }}</td>
+        <td>{{ factura.eps }}</td>
+        <td>${{ factura.valor_bruto|floatformat:2 }}</td>
+        <td>{{ factura.estado_auditoria }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

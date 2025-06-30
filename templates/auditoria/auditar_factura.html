@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Auditar Factura{% endblock %}
+{% block content %}
+<h2 class="mb-4">Auditar Factura <span class="badge bg-secondary">{{ factura.numero }}</span></h2>
+
+<div class="mb-3">
+  <strong>Identificaciones encontradas en los RIPS:</strong>
+  <ul class="mb-2">
+    {% for id in identificaciones %}
+      <li>{{ id }}</li>
+    {% empty %}
+      <li>No se encontraron identificaciones.</li>
+    {% endfor %}
+  </ul>
+</div>
+
+<h4>Items</h4>
+<div class="table-responsive mb-4">
+  <table class="table table-bordered table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Tipo</th>
+        <th>Código</th>
+        <th>Descripción</th>
+        <th>Valor</th>
+        <th>Prestador</th>
+        <th>Identificación Paciente</th>
+        <th>Glosar</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for item in items %}
+      <tr>
+        <td>{{ item.tipo_servicio }}</td>
+        <td>{{ item.codigo }}</td>
+        <td>{{ item.descripcion }}</td>
+        <td>${{ item.valor|floatformat:2 }}</td>
+        <td>{{ item.cod_prestador }}</td>
+        <td>{{ item.paciente_id }}</td>
+        <td>
+          <form method="post" class="row g-2">
+            {% csrf_token %}
+            <input type="hidden" name="item_id" value="{{ item.id }}">
+            <div class="col-12 mb-1">
+              <input type="text" name="codigo_glosa" class="form-control" placeholder="Código Glosa">
+            </div>
+            <div class="col-12 mb-1">
+              <input type="text" name="descripcion" class="form-control" placeholder="Descripción">
+            </div>
+            <div class="col-12 mb-1">
+              <input type="number" name="valor_glosado" class="form-control" placeholder="Valor Glosado">
+            </div>
+            <div class="col-12">
+              <button type="submit" class="btn btn-outline-primary btn-sm w-100">Agregar Glosa</button>
+            </div>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h4>Glosas Registradas</h4>
+<div class="table-responsive">
+  <table class="table table-bordered table-hover align-middle">
+    <thead class="table-light">
+      <tr><th>Item</th><th>Código</th><th>Descripción</th><th>Valor</th><th>Estado</th></tr>
+    </thead>
+    <tbody>
+    {% for glosa in glosas %}
+      <tr>
+        <td>{{ glosa.item.codigo }}</td>
+        <td>{{ glosa.codigo_glosa }}</td>
+        <td>{{ glosa.descripcion }}</td>
+        <td>${{ glosa.valor_glosado|floatformat:2 }}</td>
+        <td>{{ glosa.estado }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

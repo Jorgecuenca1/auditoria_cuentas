@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Glosas de la Factura{% endblock %}
+{% block content %}
+<h2 class="mb-4">Glosas de la Factura {{ factura.numero }}</h2>
+<div class="mb-3">
+  <a href="{% url 'auditoria:lista_radicados' %}" class="btn btn-secondary">&larr; Volver a Radicados</a>
+</div>
+<div class="table-responsive">
+  <table class="table table-bordered table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>#</th>
+        <th>Descripción</th>
+        <th>Valor</th>
+        <th>Estado</th>
+        <th>Respuesta</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for glosa in glosas %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ glosa.descripcion }}</td>
+        <td>${{ glosa.valor|floatformat:2 }}</td>
+        <td>{{ glosa.estado }}</td>
+        <td>{{ glosa.respuesta|default:'-' }}</td>
+        <td>
+          {% if glosa.estado == 'Pendiente' %}
+            <a href="{% url 'auditoria:responder_glosa' glosa.id %}" class="btn btn-success btn-sm">Responder</a>
+          {% else %}
+            <span class="text-muted">Respondida</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-center">No hay glosas para esta factura.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %} 

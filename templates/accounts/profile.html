@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Perfil{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card shadow">
+      <div class="card-body">
+        <h3 class="card-title mb-4">Perfil de Usuario</h3>
+        <ul class="list-group">
+          <li class="list-group-item"><strong>Usuario:</strong> {{ profile.user.username }}</li>
+          <li class="list-group-item"><strong>Rol:</strong> {{ profile.role }}</li>
+          <li class="list-group-item"><strong>Entidad:</strong> {{ profile.entidad_nombre }}</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

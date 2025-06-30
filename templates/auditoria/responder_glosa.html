@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Responder Glosa{% endblock %}
+{% block content %}
+<h2 class="mb-4">Responder Glosa</h2>
+<div class="card">
+  <div class="card-body">
+    <h5 class="card-title">Descripción de la Glosa</h5>
+    <p class="card-text">{{ glosa.descripcion }}</p>
+    <h6>Valor: ${{ glosa.valor|floatformat:2 }}</h6>
+    <form method="post">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label for="respuesta" class="form-label">Respuesta</label>
+        <textarea name="respuesta" id="respuesta" class="form-control" rows="4" required>{{ glosa.respuesta }}</textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">Enviar Respuesta</button>
+      <a href="{% url 'auditoria:lista_glosas' glosa.factura.id %}" class="btn btn-secondary ms-2">Cancelar</a>
+    </form>
+  </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Glosas Pendientes por Responder{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Glosas Pendientes por Responder</h2>
+    
+    {% if glosas %}
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Factura</th>
+                    <th>Código Glosa</th>
+                    <th>Descripción</th>
+                    <th>Valor Glosado</th>
+                    <th>Fecha Glosa</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for glosa in glosas %}
+                <tr>
+                    <td>{{ glosa.factura.numero_factura }}</td>
+                    <td>{{ glosa.codigo_glosa }}</td>
+                    <td>{{ glosa.descripcion }}</td>
+                    <td>${{ glosa.valor_glosado|floatformat:2 }}</td>
+                    <td>{{ glosa.fecha_glosa|date:"d/m/Y" }}</td>
+                    <td>
+                        <a href="{% url 'auditoria:responder_glosa' glosa.id %}" 
+                           class="btn btn-primary btn-sm">
+                            Responder
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        No hay glosas pendientes por responder en este momento.
+    </div>
+    {% endif %}
+</div>
+{% endblock %} 

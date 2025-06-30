@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block title %}Reporte de Cartera{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Reporte de Cartera</h2>
+
+    <!-- Resumen General -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Facturas</h5>
+                    <h2 class="card-text">{{ total_facturas }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Valor Total</h5>
+                    <h2 class="card-text">${{ valor_total|floatformat:2 }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cartera por IPS -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Cartera por IPS</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>IPS</th>
+                            <th>Total Facturas</th>
+                            <th>Valor Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cartera in cartera_por_ips %}
+                        <tr>
+                            <td>{{ cartera.ips }}</td>
+                            <td>{{ cartera.total_facturas }}</td>
+                            <td>${{ cartera.valor_total|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center">No hay datos disponibles</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cartera por Estado -->
+    <div class="card">
+        <div class="card-header">
+            <h4>Cartera por Estado de Auditoría</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Estado</th>
+                            <th>Total Facturas</th>
+                            <th>Valor Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for estado in cartera_por_estado %}
+                        <tr>
+                            <td>{{ estado.estado_auditoria }}</td>
+                            <td>{{ estado.total_facturas }}</td>
+                            <td>${{ estado.valor_total|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center">No hay datos disponibles</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

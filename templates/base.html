@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Auditoría de Cuentas{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body { 
+            background: #f8f9fa; 
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .container { 
+            margin-top: 20px;
+            flex: 1;
+        }
+        .navbar-nav .nav-link.active {
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 4px;
+        }
+        .dropdown-item.active {
+            background-color: #0d6efd;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+            <i class="bi bi-file-earmark-medical"></i>
+            Auditoría de Cuentas
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        
+        <div class="collapse navbar-collapse" id="navbarMain">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <!-- Facturación -->
+                {% if user.profile.role == 'IPS' %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-file-text"></i> Facturación
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'facturacion:radicar_factura' %}">
+                            <i class="bi bi-file-plus"></i> Radicar Factura
+                        </a></li>
+                    </ul>
+                </li>
+                {% endif %}
+
+                <!-- Auditoría -->
+                {% if user.profile.role == 'ET' %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-clipboard-check"></i> Auditoría
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'auditoria:lista_radicados' %}">
+                            <i class="bi bi-list-check"></i> Facturas para Auditar
+                        </a></li>
+                    </ul>
+                </li>
+                {% endif %}
+
+                <!-- Glosas -->
+                {% if user.profile.role == 'IPS' or user.profile.role == 'EPS' %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-exclamation-circle"></i> Glosas
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'auditoria:glosas_pendientes' %}">
+                            <i class="bi bi-clock"></i> Glosas Pendientes
+                        </a></li>
+                    </ul>
+                </li>
+                {% endif %}
+
+                <!-- Cartera -->
+                {% if user.profile.role == 'ET' %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'cartera:resumen_cartera' %}">
+                        <i class="bi bi-wallet2"></i> Cartera
+                    </a>
+                </li>
+
+                <!-- Reportes -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-graph-up"></i> Reportes
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'auditoria:reporte_glosas' %}">
+                            <i class="bi bi-file-earmark-bar-graph"></i> Reporte de Glosas
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'auditoria:reporte_cartera' %}">
+                            <i class="bi bi-cash-coin"></i> Reporte de Cartera
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'auditoria:reporte_auditorias' %}">
+                            <i class="bi bi-calendar-check"></i> Reporte de Auditorías
+                        </a></li>
+                    </ul>
+                </li>
+                {% endif %}
+            </ul>
+
+            <!-- Perfil de Usuario -->
+            <ul class="navbar-nav">
+                {% if user.is_authenticated %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle"></i> {{ user.username }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{% url 'accounts:profile' %}">
+                            <i class="bi bi-person"></i> Mi Perfil
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'accounts:logout' %}">
+                            <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+                        </a></li>
+                    </ul>
+                </li>
+                {% else %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'accounts:login' %}">
+                        <i class="bi bi-box-arrow-in-right"></i> Iniciar Sesión
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    {% block content %}{% endblock %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 
