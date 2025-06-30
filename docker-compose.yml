@@ -31,7 +31,7 @@ services:
       - '443:443'
     environment:
       DOMAINS: 'cuentasmedicas.corpofuturo.org -> http://backend:8002'
-      STAGE: 'staging'  # Cambiar a 'production' cuando todo funcione bien
+      STAGE: 'production'  # Cambiar a 'production' cuando todo funcione bien
       FORCE_RENEW: 'true'
       CLIENT_MAX_BODY_SIZE: 5M
     volumes:
