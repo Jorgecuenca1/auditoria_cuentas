@@ -17,15 +17,15 @@ def validate_rips_item(item_data, item_type):
             errors.append("Código de Consulta (CUPS) es obligatorio.")
         # Ejemplo de validación contra catálogo (asumiendo que están poblados)
         if item_data.get("codConsulta") and not CatalogoCUPS.objects.filter(codigo=item_data["codConsulta"]).exists():
-            errors.append(f"Código CUPS de Consulta '{item_data["codConsulta"]}' no encontrado en el catálogo.")
+            errors.append(f"Código CUPS de Consulta '{item_data['codConsulta']}' no encontrado en el catálogo.")
         if item_data.get("codDiagnosticoPrincipal") and not CatalogoCIE10.objects.filter(codigo=item_data["codDiagnosticoPrincipal"]).exists():
-            errors.append(f"Código CIE10 de Diagnóstico Principal '{item_data["codDiagnosticoPrincipal"]}' no encontrado en el catálogo.")
+            errors.append(f"Código CIE10 de Diagnóstico Principal '{item_data['codDiagnosticoPrincipal']}' no encontrado en el catálogo.")
 
     elif item_type == "medicamentos":
         if not item_data.get("codTecnologiaSalud"):
             errors.append("Código de Tecnología en Salud (CUMS) es obligatorio para Medicamentos.")
         if item_data.get("codTecnologiaSalud") and not CatalogoCUMS.objects.filter(codigo=item_data["codTecnologiaSalud"]).exists():
-            errors.append(f"Código CUMS '{item_data["codTecnologiaSalud"]}' no encontrado en el catálogo de medicamentos.")
+            errors.append(f"Código CUMS '{item_data['codTecnologiaSalud']}' no encontrado en el catálogo de medicamentos.")
         if item_data.get("idMIPRES") and not item_data.get("numAutorizacion"):
             errors.append("Si ID MIPRES está presente, Número de Autorización es obligatorio.")
         if item_data.get("vrUnitMedicamento") is None or item_data.get("cantidadMedicamento") is None:
@@ -37,7 +37,7 @@ def validate_rips_item(item_data, item_type):
         if not item_data.get("codProcedimiento"):
             errors.append("Código de Procedimiento (CUPS) es obligatorio.")
         if item_data.get("codProcedimiento") and not CatalogoCUPS.objects.filter(codigo=item_data["codProcedimiento"]).exists():
-            errors.append(f"Código CUPS de Procedimiento '{item_data["codProcedimiento"]}' no encontrado en el catálogo.")
+            errors.append(f"Código CUPS de Procedimiento '{item_data['codProcedimiento']}' no encontrado en el catálogo.")
 
     elif item_type == "hospitalizacion":
         fecha_inicio_atencion_str = item_data.get("fechaInicioAtencion")
@@ -72,8 +72,8 @@ def validate_rips_user(user_data):
 
     # Validar códigos de país y municipio (asumiendo que los catálogos están poblados)
     if user_data.get("codPaisResidencia") and not CatalogoPais.objects.filter(codigo=user_data["codPaisResidencia"]).exists():
-        errors.append(f"Código de País de Residencia '{user_data["codPaisResidencia"]}' no encontrado en el catálogo.")
+        errors.append(f"Código de País de Residencia '{user_data['codPaisResidencia']}' no encontrado en el catálogo.")
     if user_data.get("codMunicipioResidencia") and not CatalogoMunicipio.objects.filter(codigo=user_data["codMunicipioResidencia"]).exists():
-        errors.append(f"Código de Municipio de Residencia '{user_data["codMunicipioResidencia"]}' no encontrado en el catálogo.")
+        errors.append(f"Código de Municipio de Residencia '{user_data['codMunicipioResidencia']}' no encontrado en el catálogo.")
 
     return errors 
