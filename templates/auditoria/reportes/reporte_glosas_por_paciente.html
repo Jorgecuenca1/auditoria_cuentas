@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Reporte de Glosas por Paciente{% endblock %}
+{% block content %}
+<h2 class="mb-4">Reporte de Glosas por Paciente</h2>
+
+{% if glosas_por_paciente %}
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Número de Documento</th>
+                    <th>Tipo de Usuario (Régimen)</th>
+                    <th>Total Glosas</th>
+                    <th>Valor Total Glosado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in glosas_por_paciente %}
+                    <tr>
+                        <td>{{ item.paciente__numero_documento }}</td>
+                        <td>{{ item.paciente__tipo_usuario }}</td>
+                        <td>{{ item.total_glosas }}</td>
+                        <td>${{ item.valor_total_glosado|floatformat:2 }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="alert alert-info" role="alert">
+        No hay glosas registradas por paciente aún.
+    </div>
+{% endif %}
+{% endblock %} 

@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Tarifas del Contrato: {{ contrato.numero }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Tarifas del Contrato: {{ contrato.numero }}</h1>
+    <p><a href="{% url 'facturacion:contrato_update' pk=contrato.pk %}" class="btn btn-secondary mb-3">Volver al Contrato</a></p>
+    <p><a href="{% url 'facturacion:tarifa_contrato_create' contrato_pk=contrato.pk %}" class="btn btn-primary mb-3">Añadir Nueva Tarifa</a></p>
+
+    {% if tarifas %}
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead class="thead-dark">
+                <tr>
+                    <th>Tipo de Ítem</th>
+                    <th>Código del Ítem</th>
+                    <th>Descripción</th>
+                    <th>Valor Acordado</th>
+                    <th>Vigencia Inicio</th>
+                    <th>Vigencia Fin</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tarifa in tarifas %}
+                <tr>
+                    <td>{{ tarifa.get_tipo_item_display }}</td>
+                    <td>{{ tarifa.codigo_item }}</td>
+                    <td>{{ tarifa.descripcion|default:"N/A" }}</td>
+                    <td>${{ tarifa.valor_acordado|floatformat:2 }}</td>
+                    <td>{{ tarifa.fecha_vigencia_inicio|date:"Y-m-d"|default:"N/A" }}</td>
+                    <td>{{ tarifa.fecha_vigencia_fin|date:"Y-m-d"|default:"N/A" }}</td>
+                    <td>
+                        <a href="{% url 'facturacion:tarifa_contrato_update' pk=tarifa.pk %}" class="btn btn-sm btn-info">Editar</a>
+                        <a href="{% url 'facturacion:tarifa_contrato_delete' pk=tarifa.pk %}" class="btn btn-sm btn-danger">Eliminar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info" role="alert">
+        No hay tarifas definidas para este contrato.
+    </div>
+    {% endif %}
+</div>
+{% endblock %} 

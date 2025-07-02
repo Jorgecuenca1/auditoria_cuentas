@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Listado de Contratos{% endblock %}
+{% block content %}
+<h2 class="mb-4">Listado de Contratos</h2>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<a href="{% url 'facturacion:contrato_create' %}" class="btn btn-primary mb-3"><i class="bi bi-plus-circle"></i> Crear Nuevo Contrato</a>
+
+{% if contratos %}
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Número</th>
+                    <th>Tipo</th>
+                    <th>Fecha Inicio</th>
+                    <th>Fecha Fin</th>
+                    <th>Tarifario</th>
+                    <th>Alerta Vencimiento</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for contrato in contratos %}
+                    <tr>
+                        <td>{{ contrato.numero }}</td>
+                        <td>{{ contrato.tipo }}</td>
+                        <td>{{ contrato.fecha_inicio|date:"Y-m-d" }}</td>
+                        <td>{{ contrato.fecha_fin|date:"Y-m-d" }}</td>
+                        <td>{{ contrato.tarifario }}</td>
+                        <td>
+                            {% if contrato.alerta_vencimiento %}
+                                <span class="badge bg-warning text-dark">Activa</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactiva</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'facturacion:contrato_update' pk=contrato.pk %}" class="btn btn-info btn-sm me-2"><i class="bi bi-pencil"></i> Editar</a>
+                            {# Eliminar contrato (opcional, requiere vista y URL adicional) #}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="alert alert-info" role="alert">
+        No hay contratos registrados aún.
+    </div>
+{% endif %}
+{% endblock %} 

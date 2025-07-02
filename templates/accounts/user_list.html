@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}Gestión de Usuarios{% endblock %}
+{% block content %}
+<h2 class="mb-4">Gestión de Usuarios</h2>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<a href="{% url 'accounts:user_create' %}" class="btn btn-primary mb-3"><i class="bi bi-person-plus"></i> Crear Nuevo Usuario</a>
+
+{% if users %}
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Usuario</th>
+                    <th>Email</th>
+                    <th>Rol</th>
+                    <th>Entidad</th>
+                    <th>Activo</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user_obj in users %}
+                    <tr>
+                        <td>{{ user_obj.username }}</td>
+                        <td>{{ user_obj.email }}</td>
+                        <td>{{ user_obj.profile.role }}</td>
+                        <td>{{ user_obj.profile.entidad_nombre|default:"N/A" }}</td>
+                        <td>
+                            {% if user_obj.is_active %}
+                                <span class="badge bg-success">Sí</span>
+                            {% else %}
+                                <span class="badge bg-danger">No</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'accounts:user_update' pk=user_obj.pk %}" class="btn btn-info btn-sm me-2"><i class="bi bi-pencil"></i> Editar</a>
+                            {# Opción para eliminar usuario (requiere vista y URL adicional) #}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="alert alert-info" role="alert">
+        No hay usuarios registrados aún.
+    </div>
+{% endif %}
+{% endblock %} 

@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow-lg p-4 mb-5 bg-white rounded">
+                <div class="card-body text-center">
+                    <h1 class="card-title display-4 mb-4">¡Bienvenido, {{ user.username }}!</h1>
+                    <p class="card-text lead">Tu rol actual es: <strong>{{ user_role }}</strong></p>
+                    <hr class="my-4">
+                    <p class="card-text">Desde aquí puedes acceder a las funcionalidades clave de tu sistema de Auditoría de Cuentas.</p>
+                    <div class="row mt-4">
+                        {% if user_role == 'ADMIN' %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 border-primary">
+                                <div class="card-body">
+                                    <h5 class="card-title text-primary"><i class="bi bi-people-fill"></i> Gestión de Usuarios</h5>
+                                    <p class="card-text">Administra los usuarios y sus roles en el sistema.</p>
+                                    <a href="{% url 'accounts:user_list' %}" class="btn btn-primary mt-2">Ir a Usuarios</a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if user_role == 'IPS' %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 border-success">
+                                <div class="card-body">
+                                    <h5 class="card-title text-success"><i class="bi bi-file-text"></i> Radicar Facturas</h5>
+                                    <p class="card-text">Sube y valida los archivos RIPS de tus facturas.</p>
+                                    <a href="{% url 'facturacion:radicar_factura' %}" class="btn btn-success mt-2">Radicar Ahora</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 border-info">
+                                <div class="card-body">
+                                    <h5 class="card-title text-info"><i class="bi bi-journal-text"></i> Gestión de Contratos</h5>
+                                    <p class="card-text">Administra los contratos de prestación de servicios.</p>
+                                    <a href="{% url 'facturacion:contrato_list' %}" class="btn btn-info mt-2">Ver Contratos</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 border-warning">
+                                <div class="card-body">
+                                    <h5 class="card-title text-warning"><i class="bi bi-clock"></i> Glosas Pendientes</h5>
+                                    <p class="card-text">Revisa y responde las glosas que esperan tu atención.</p>
+                                    <a href="{% url 'auditoria:glosas_pendientes' %}" class="btn btn-warning mt-2">Ir a Glosas</a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if user_role == 'ET' %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 border-danger">
+                                <div class="card-body">
+                                    <h5 class="card-title text-danger"><i class="bi bi-clipboard-check"></i> Facturas para Auditar</h5>
+                                    <p class="card-text">Inicia o continúa la auditoría de facturas radicadas.</p>
+                                    <a href="{% url 'auditoria:lista_radicados' %}" class="btn btn-danger mt-2">Auditar Facturas</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 border-primary">
+                                <div class="card-body">
+                                    <h5 class="card-title text-primary"><i class="bi bi-graph-up"></i> Ver Reportes</h5>
+                                    <p class="card-text">Accede a todos los informes analíticos del sistema.</p>
+                                    <a href="{% url 'auditoria:reporte_glosas' %}" class="btn btn-primary mt-2">Ver Reportes</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 border-dark">
+                                <div class="card-body">
+                                    <h5 class="card-title text-dark"><i class="bi bi-wallet2"></i> Resumen de Cartera</h5>
+                                    <p class="card-text">Revisa el estado general de la cartera.</p>
+                                    <a href="{% url 'cartera:resumen_cartera' %}" class="btn btn-dark mt-2">Ver Cartera</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 border-info">
+                                <div class="card-body">
+                                    <h5 class="card-title text-info"><i class="bi bi-journal-text"></i> Consultar Contratos</h5>
+                                    <p class="card-text">Visualiza los contratos de prestación de servicios.</p>
+                                    <a href="{% url 'facturacion:contrato_list' %}" class="btn btn-info mt-2">Ver Contratos</a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if user_role == 'EPS' %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 border-warning">
+                                <div class="card-body">
+                                    <h5 class="card-title text-warning"><i class="bi bi-clock"></i> Glosas Pendientes</h5>
+                                    <p class="card-text">Revisa y gestiona las glosas que te han sido radicadas.</p>
+                                    <a href="{% url 'auditoria:glosas_pendientes' %}" class="btn btn-warning mt-2">Gestionar Glosas</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 border-info">
+                                <div class="card-body">
+                                    <h5 class="card-title text-info"><i class="bi bi-journal-text"></i> Consultar Contratos</h5>
+                                    <p class="card-text">Visualiza los contratos de prestación de servicios.</p>
+                                    <a href="{% url 'facturacion:contrato_list' %}" class="btn btn-info mt-2">Ver Contratos</a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

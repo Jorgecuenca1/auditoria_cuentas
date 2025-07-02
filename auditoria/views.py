@@ -1,10 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from facturacion.models import Factura, RipsItem
+from facturacion.models import Factura, Paciente, RipsConsulta, RipsMedicamento, RipsProcedimiento, RipsHospitalizacion, RipsOtroServicio
 from .models import Glosa
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.contrib import messages
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, F, Case, When, Value, CharField
 from accounts.decorators import role_required
 
 @login_required
@@ -16,9 +16,9 @@ def reporte_glosas(request):
     glosas_respondidas = Glosa.objects.filter(estado="Respondida").count()
     valor_total_glosado = Glosa.objects.aggregate(total=Sum('valor_glosado'))['total'] or 0
 
-    # Glosas por IPS
+    # Glosas por IPS (factura__ips se refiere al Profile)
     glosas_por_ips = Glosa.objects.values(
-        'factura__ips'
+        'factura__ips__entidad_nombre'
     ).annotate(
         total_glosas=Count('id'),
         valor_total=Sum('valor_glosado')
@@ -42,7 +42,7 @@ def reporte_cartera(request):
     
     # Cartera por IPS
     cartera_por_ips = facturas.values(
-        'ips'
+        'ips__entidad_nombre'
     ).annotate(
         total_facturas=Count('id'),
         valor_total=Sum('valor_bruto')
@@ -73,17 +73,56 @@ def reporte_auditorias(request):
     
     # Auditorías por IPS
     auditorias_por_ips = facturas.values(
-        'ips',
+        'ips__entidad_nombre',
         'estado_auditoria'
     ).annotate(
         total=Count('id'),
         valor_total=Sum('valor_bruto')
-    ).order_by('ips', 'estado_auditoria')
+    ).order_by('ips__entidad_nombre', 'estado_auditoria')
 
     return render(request, 'auditoria/reportes/reporte_auditorias.html', {
         'total_auditadas': total_auditadas,
         'total_pendientes': total_pendientes,
         'auditorias_por_ips': auditorias_por_ips,
+    })
+
+# NUEVO: Reporte de Glosas por Paciente
+@login_required
+@role_required('ET')
+def reporte_glosas_por_paciente(request):
+    glosas_por_paciente = Glosa.objects.values(
+        'paciente__numero_documento',
+        'paciente__tipo_usuario' # Para diferenciar régimen
+    ).annotate(
+        total_glosas=Count('id'),
+        valor_total_glosado=Sum('valor_glosado')
+    ).order_by('-valor_total_glosado')
+
+    return render(request, 'auditoria/reportes/reporte_glosas_por_paciente.html', {
+        'glosas_por_paciente': glosas_por_paciente
+    })
+
+# NUEVO: Reporte de Glosas por Tipo de Ítem RIPS
+@login_required
+@role_required('ET')
+def reporte_glosas_por_tipo_item(request):
+    glosas_por_tipo = Glosa.objects.annotate(
+        item_type=Case(
+            When(consulta__isnull=False, then=Value('Consulta')),
+            When(medicamento__isnull=False, then=Value('Medicamento')),
+            When(procedimiento__isnull=False, then=Value('Procedimiento')),
+            When(hospitalizacion__isnull=False, then=Value('Hospitalización')),
+            When(otro_servicio__isnull=False, then=Value('Otros Servicios')),
+            default=Value('General'),
+            output_field=CharField(),
+        )
+    ).values('item_type').annotate(
+        total_glosas=Count('id'),
+        valor_total_glosado=Sum('valor_glosado')
+    ).order_by('-total_glosas')
+
+    return render(request, 'auditoria/reportes/reporte_glosas_por_tipo_item.html', {
+        'glosas_por_tipo': glosas_por_tipo
     })
 
 @login_required
@@ -96,9 +135,17 @@ def lista_radicados(request):
 @role_required('ET')
 def auditar_factura(request, factura_id):
     factura = get_object_or_404(Factura, id=factura_id)
-    items = RipsItem.objects.filter(factura=factura)
-    # Extraer paciente_id únicos
-    identificaciones = sorted(set(item.paciente_id for item in items if item.paciente_id))
+
+    # Recuperar todos los tipos de ítems RIPS asociados a esta factura
+    consultas = RipsConsulta.objects.filter(factura=factura)
+    medicamentos = RipsMedicamento.objects.filter(factura=factura)
+    procedimientos = RipsProcedimiento.objects.filter(factura=factura)
+    hospitalizaciones = RipsHospitalizacion.objects.filter(factura=factura)
+    otros_servicios = RipsOtroServicio.objects.filter(factura=factura)
+
+    # Extraer identificaciones únicas de pacientes de todos los ítems RIPS
+    all_rips_items = list(consultas) + list(medicamentos) + list(procedimientos) + list(hospitalizaciones) + list(otros_servicios)
+    identificaciones = sorted(set(item.paciente.numero_documento for item in all_rips_items if item.paciente))
     
     if request.method == 'POST':
         if 'finalizar_auditoria' in request.POST:
@@ -112,23 +159,54 @@ def auditar_factura(request, factura_id):
                 messages.success(request, "Auditoría finalizada exitosamente.")
                 return redirect('auditoria:lista_radicados')
         else:
-            # Lógica existente para crear glosas
-            item_id = request.POST.get('item_id')
+            # Lógica para crear glosas, ahora vinculada al tipo de ítem RIPS
+            item_type = request.POST.get('item_type') # ej. 'consulta', 'medicamento'
+            item_pk = request.POST.get('item_pk')     # ID del ítem RIPS específico
             codigo_glosa = request.POST.get('codigo_glosa')
             descripcion = request.POST.get('descripcion')
             valor_glosado = request.POST.get('valor_glosado')
-            Glosa.objects.create(
-                factura=factura,
-                item_id=item_id,
-                codigo_glosa=codigo_glosa,
-                descripcion=descripcion,
-                valor_glosado=valor_glosado
-            )
+
+            glosa_kwargs = {
+                'factura': factura,
+                'codigo_glosa': codigo_glosa,
+                'descripcion': descripcion,
+                'valor_glosado': valor_glosado,
+            }
+            
+            # Asignar el ForeignKey correcto y el paciente del ítem glosado
+            related_item = None
+            if item_type == 'consulta' and item_pk:
+                related_item = get_object_or_404(RipsConsulta, pk=item_pk)
+                glosa_kwargs['consulta'] = related_item
+            elif item_type == 'medicamento' and item_pk:
+                related_item = get_object_or_404(RipsMedicamento, pk=item_pk)
+                glosa_kwargs['medicamento'] = related_item
+            elif item_type == 'procedimiento' and item_pk:
+                related_item = get_object_or_404(RipsProcedimiento, pk=item_pk)
+                glosa_kwargs['procedimiento'] = related_item
+            elif item_type == 'hospitalizacion' and item_pk:
+                related_item = get_object_or_404(RipsHospitalizacion, pk=item_pk)
+                glosa_kwargs['hospitalizacion'] = related_item
+            elif item_type == 'otro_servicio' and item_pk:
+                related_item = get_object_or_404(RipsOtroServicio, pk=item_pk)
+                glosa_kwargs['otro_servicio'] = related_item
+
+            if related_item and hasattr(related_item, 'paciente'):
+                glosa_kwargs['paciente'] = related_item.paciente
+            else:
+                messages.warning(request, "Glosa creada sin asociación a un ítem RIPS específico o paciente.")
+
+            Glosa.objects.create(**glosa_kwargs)
+            messages.success(request, "Glosa creada exitosamente.")
     
     glosas = Glosa.objects.filter(factura=factura)
     return render(request, 'auditoria/auditar_factura.html', {
         'factura': factura,
-        'items': items,
+        'consultas': consultas,
+        'medicamentos': medicamentos,
+        'procedimientos': procedimientos,
+        'hospitalizaciones': hospitalizaciones,
+        'otros_servicios': otros_servicios,
         'glosas': glosas,
         'identificaciones': identificaciones,
     })

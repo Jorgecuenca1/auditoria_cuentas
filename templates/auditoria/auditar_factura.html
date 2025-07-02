@@ -1,57 +1,65 @@
 {% extends 'base.html' %}
 {% block title %}Auditar Factura{% endblock %}
 {% block content %}
-<h2 class="mb-4">Auditar Factura <span class="badge bg-secondary">{{ factura.numero }}</span></h2>
+<h2 class="mb-4">Auditar Factura <span class="badge bg-primary">{{ factura.numero }}</span></h2>
+
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  {% endfor %}
+{% endif %}
 
 <div class="mb-3">
-  <strong>Identificaciones encontradas en los RIPS:</strong>
-  <ul class="mb-2">
+  <strong>Identificaciones únicas de Pacientes en esta Factura:</strong>
+  <ul class="mb-2 list-inline">
     {% for id in identificaciones %}
-      <li>{{ id }}</li>
+      <li class="list-inline-item badge bg-info text-dark">{{ id }}</li>
     {% empty %}
-      <li>No se encontraron identificaciones.</li>
+      <li class="list-inline-item">No se encontraron identificaciones de pacientes.</li>
     {% endfor %}
   </ul>
 </div>
 
-<h4>Items</h4>
+<h3 class="mt-5 mb-3">Detalle de RIPS</h3>
+
+{# Sección de Consultas #}
+{% if consultas %}
+<h4 class="mt-4">Consultas</h4>
 <div class="table-responsive mb-4">
-  <table class="table table-bordered table-hover align-middle">
+  <table class="table table-bordered table-hover align-middle table-sm">
     <thead class="table-light">
       <tr>
-        <th>Tipo</th>
-        <th>Código</th>
-        <th>Descripción</th>
+        <th>#</th>
+        <th>Fecha Inicio</th>
+        <th>Paciente ID</th>
+        <th>Cod. Consulta</th>
+        <th>Diagnóstico Ppal.</th>
         <th>Valor</th>
-        <th>Prestador</th>
-        <th>Identificación Paciente</th>
-        <th>Glosar</th>
+        <th>Acciones</th>
       </tr>
     </thead>
     <tbody>
-    {% for item in items %}
+    {% for item in consultas %}
       <tr>
-        <td>{{ item.tipo_servicio }}</td>
-        <td>{{ item.codigo }}</td>
-        <td>{{ item.descripcion }}</td>
-        <td>${{ item.valor|floatformat:2 }}</td>
-        <td>{{ item.cod_prestador }}</td>
-        <td>{{ item.paciente_id }}</td>
+        <td>{{ item.consecutivo }}</td>
+        <td>{{ item.fecha_inicio_atencion|date:"Y-m-d H:i" }}</td>
+        <td>{{ item.paciente.numero_documento }}</td>
+        <td>{{ item.cod_consulta }}</td>
+        <td>{{ item.cod_diagnostico_principal }}</td>
+        <td>${{ item.vr_servicio|floatformat:2 }}</td>
         <td>
-          <form method="post" class="row g-2">
+          <form method="post" class="row g-2 align-items-center">
             {% csrf_token %}
-            <input type="hidden" name="item_id" value="{{ item.id }}">
-            <div class="col-12 mb-1">
-              <input type="text" name="codigo_glosa" class="form-control" placeholder="Código Glosa">
-            </div>
-            <div class="col-12 mb-1">
-              <input type="text" name="descripcion" class="form-control" placeholder="Descripción">
-            </div>
-            <div class="col-12 mb-1">
-              <input type="number" name="valor_glosado" class="form-control" placeholder="Valor Glosado">
-            </div>
+            <input type="hidden" name="item_type" value="consulta">
+            <input type="hidden" name="item_pk" value="{{ item.pk }}">
             <div class="col-12">
-              <button type="submit" class="btn btn-outline-primary btn-sm w-100">Agregar Glosa</button>
+              <input type="text" name="codigo_glosa" class="form-control form-control-sm mb-1" placeholder="Código Glosa" required>
+              <textarea name="descripcion" class="form-control form-control-sm mb-1" placeholder="Descripción" rows="2" required></textarea>
+              <input type="number" name="valor_glosado" class="form-control form-control-sm mb-1" placeholder="Valor Glosado" step="0.01" required>
+              <button type="submit" class="btn btn-outline-danger btn-sm w-100">Glosar</button>
             </div>
           </form>
         </td>
@@ -60,24 +68,276 @@
     </tbody>
   </table>
 </div>
+{% else %}
+<p class="text-muted">No hay consultas registradas para esta factura.</p>
+{% endif %}
 
-<h4>Glosas Registradas</h4>
-<div class="table-responsive">
-  <table class="table table-bordered table-hover align-middle">
+{# Sección de Medicamentos #}
+{% if medicamentos %}
+<h4 class="mt-4">Medicamentos</h4>
+<div class="table-responsive mb-4">
+  <table class="table table-bordered table-hover align-middle table-sm">
     <thead class="table-light">
-      <tr><th>Item</th><th>Código</th><th>Descripción</th><th>Valor</th><th>Estado</th></tr>
+      <tr>
+        <th>#</th>
+        <th>Fecha Disp.</th>
+        <th>Paciente ID</th>
+        <th>Cod. Tecnología</th>
+        <th>Nom. Tecnología</th>
+        <th>Cantidad</th>
+        <th>Valor Unit.</th>
+        <th>Valor Total</th>
+        <th>Acciones</th>
+      </tr>
     </thead>
     <tbody>
-    {% for glosa in glosas %}
+    {% for item in medicamentos %}
       <tr>
-        <td>{{ glosa.item.codigo }}</td>
-        <td>{{ glosa.codigo_glosa }}</td>
-        <td>{{ glosa.descripcion }}</td>
-        <td>${{ glosa.valor_glosado|floatformat:2 }}</td>
-        <td>{{ glosa.estado }}</td>
+        <td>{{ item.consecutivo }}</td>
+        <td>{{ item.fecha_dispensacion|date:"Y-m-d H:i" }}</td>
+        <td>{{ item.paciente.numero_documento }}</td>
+        <td>{{ item.cod_tecnologia_salud }}</td>
+        <td>{{ item.nom_tecnologia_salud }}</td>
+        <td>{{ item.cantidad_medicamento }} {{ item.unidad_medida }}</td>
+        <td>${{ item.vr_unit_medicamento|floatformat:2 }}</td>
+        <td>${{ item.vr_servicio|floatformat:2 }}</td>
+        <td>
+          <form method="post" class="row g-2 align-items-center">
+            {% csrf_token %}
+            <input type="hidden" name="item_type" value="medicamento">
+            <input type="hidden" name="item_pk" value="{{ item.pk }}">
+            <div class="col-12">
+              <input type="text" name="codigo_glosa" class="form-control form-control-sm mb-1" placeholder="Código Glosa" required>
+              <textarea name="descripcion" class="form-control form-control-sm mb-1" placeholder="Descripción" rows="2" required></textarea>
+              <input type="number" name="valor_glosado" class="form-control form-control-sm mb-1" placeholder="Valor Glosado" step="0.01" required>
+              <button type="submit" class="btn btn-outline-danger btn-sm w-100">Glosar</button>
+            </div>
+          </form>
+        </td>
       </tr>
     {% endfor %}
     </tbody>
   </table>
 </div>
+{% else %}
+<p class="text-muted">No hay medicamentos registrados para esta factura.</p>
+{% endif %}
+
+{# Sección de Procedimientos #}
+{% if procedimientos %}
+<h4 class="mt-4">Procedimientos</h4>
+<div class="table-responsive mb-4">
+  <table class="table table-bordered table-hover align-middle table-sm">
+    <thead class="table-light">
+      <tr>
+        <th>#</th>
+        <th>Fecha Inicio</th>
+        <th>Paciente ID</th>
+        <th>Cod. Procedimiento</th>
+        <th>Diagnóstico Ppal.</th>
+        <th>Valor</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for item in procedimientos %}
+      <tr>
+        <td>{{ item.consecutivo }}</td>
+        <td>{{ item.fecha_inicio_atencion|date:"Y-m-d H:i" }}</td>
+        <td>{{ item.paciente.numero_documento }}</td>
+        <td>{{ item.cod_procedimiento }}</td>
+        <td>{{ item.cod_diagnostico_principal }}</td>
+        <td>${{ item.vr_servicio|floatformat:2 }}</td>
+        <td>
+          <form method="post" class="row g-2 align-items-center">
+            {% csrf_token %}
+            <input type="hidden" name="item_type" value="procedimiento">
+            <input type="hidden" name="item_pk" value="{{ item.pk }}">
+            <div class="col-12">
+              <input type="text" name="codigo_glosa" class="form-control form-control-sm mb-1" placeholder="Código Glosa" required>
+              <textarea name="descripcion" class="form-control form-control-sm mb-1" placeholder="Descripción" rows="2" required></textarea>
+              <input type="number" name="valor_glosado" class="form-control form-control-sm mb-1" placeholder="Valor Glosado" step="0.01" required>
+              <button type="submit" class="btn btn-outline-danger btn-sm w-100">Glosar</button>
+            </div>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">No hay procedimientos registrados para esta factura.</p>
+{% endif %}
+
+{# Sección de Hospitalización #}
+{% if hospitalizaciones %}
+<h4 class="mt-4">Hospitalización</h4>
+<div class="table-responsive mb-4">
+  <table class="table table-bordered table-hover align-middle table-sm">
+    <thead class="table-light">
+      <tr>
+        <th>#</th>
+        <th>F. Ingreso</th>
+        <th>F. Egreso</th>
+        <th>Paciente ID</th>
+        <th>Diagnóstico Ppal.</th>
+        <th>Causa Motivo</th>
+        <th>Cond. Destino</th>
+        <th>Valor (Est.)</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for item in hospitalizaciones %}
+      <tr>
+        <td>{{ item.consecutivo }}</td>
+        <td>{{ item.fecha_inicio_atencion|date:"Y-m-d H:i" }}</td>
+        <td>{{ item.fecha_egreso|date:"Y-m-d H:i" }}</td>
+        <td>{{ item.paciente.numero_documento }}</td>
+        <td>{{ item.cod_diagnostico_principal }}</td>
+        <td>{{ item.causa_motivo_atencion }}</td>
+        <td>{{ item.condicion_destino_egreso }}</td>
+        <td>${{ item.vr_servicio|floatformat:2 }}</td> {# Asumiendo que vr_servicio se usará para el valor de la estancia #}
+        <td>
+          <form method="post" class="row g-2 align-items-center">
+            {% csrf_token %}
+            <input type="hidden" name="item_type" value="hospitalizacion">
+            <input type="hidden" name="item_pk" value="{{ item.pk }}">
+            <div class="col-12">
+              <input type="text" name="codigo_glosa" class="form-control form-control-sm mb-1" placeholder="Código Glosa" required>
+              <textarea name="descripcion" class="form-control form-control-sm mb-1" placeholder="Descripción" rows="2" required></textarea>
+              <input type="number" name="valor_glosado" class="form-control form-control-sm mb-1" placeholder="Valor Glosado" step="0.01" required>
+              <button type="submit" class="btn btn-outline-danger btn-sm w-100">Glosar</button>
+            </div>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">No hay registros de hospitalización para esta factura.</p>
+{% endif %}
+
+{# Sección de Otros Servicios #}
+{% if otros_servicios %}
+<h4 class="mt-4">Otros Servicios</h4>
+<div class="table-responsive mb-4">
+  <table class="table table-bordered table-hover align-middle table-sm">
+    <thead class="table-light">
+      <tr>
+        <th>#</th>
+        <th>Fecha Sum.</th>
+        <th>Paciente ID</th>
+        <th>Tipo OS</th>
+        <th>Cod. Tecnología</th>
+        <th>Nom. Tecnología</th>
+        <th>Cantidad</th>
+        <th>Valor Unit.</th>
+        <th>Valor Total</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for item in otros_servicios %}
+      <tr>
+        <td>{{ item.consecutivo }}</td>
+        <td>{{ item.fecha_suministro|date:"Y-m-d H:i" }}</td>
+        <td>{{ item.paciente.numero_documento }}</td>
+        <td>{{ item.tipo_os }}</td>
+        <td>{{ item.cod_tecnologia_salud }}</td>
+        <td>{{ item.nom_tecnologia_salud }}</td>
+        <td>{{ item.cantidad_os }}</td>
+        <td>${{ item.vr_unit_os|floatformat:2 }}</td>
+        <td>${{ item.vr_servicio|floatformat:2 }}</td>
+        <td>
+          <form method="post" class="row g-2 align-items-center">
+            {% csrf_token %}
+            <input type="hidden" name="item_type" value="otro_servicio">
+            <input type="hidden" name="item_pk" value="{{ item.pk }}">
+            <div class="col-12">
+              <input type="text" name="codigo_glosa" class="form-control form-control-sm mb-1" placeholder="Código Glosa" required>
+              <textarea name="descripcion" class="form-control form-control-sm mb-1" placeholder="Descripción" rows="2" required></textarea>
+              <input type="number" name="valor_glosado" class="form-control form-control-sm mb-1" placeholder="Valor Glosado" step="0.01" required>
+              <button type="submit" class="btn btn-outline-danger btn-sm w-100">Glosar</button>
+            </div>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">No hay otros servicios registrados para esta factura.</p>
+{% endif %}
+
+<h3 class="mt-5 mb-3">Glosas Registradas</h3>
+{% if glosas %}
+<div class="table-responsive">
+  <table class="table table-bordered table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Paciente ID</th>
+        <th>Ítem Glosado</th>
+        <th>Tipo Ítem</th>
+        <th>Código Glosa</th>
+        <th>Descripción Glosa</th>
+        <th>Valor Glosado</th>
+        <th>Estado</th>
+        <th>Fecha Glosa</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for glosa in glosas %}
+      <tr>
+        <td>{{ glosa.paciente.numero_documento|default:"N/A" }}</td>
+        <td>
+          {% if glosa.consulta %}
+            Consulta: {{ glosa.consulta.cod_consulta }} - {{ glosa.consulta.cod_diagnostico_principal }}
+          {% elif glosa.medicamento %}
+            Medicamento: {{ glosa.medicamento.nom_tecnologia_salud }} ({{ glosa.medicamento.cod_tecnologia_salud }})
+          {% elif glosa.procedimiento %}
+            Procedimiento: {{ glosa.procedimiento.cod_procedimiento }} - {{ glosa.procedimiento.cod_diagnostico_principal }}
+          {% elif glosa.hospitalizacion %}
+            Hospitalización: {{ glosa.hospitalizacion.cod_diagnostico_principal }} (Ingreso: {{ glosa.hospitalizacion.fecha_inicio_atencion|date:"Y-m-d" }})
+          {% elif glosa.otro_servicio %}
+            Otro Servicio: {{ glosa.otro_servicio.nom_tecnologia_salud }} ({{ glosa.otro_servicio.cod_tecnologia_salud }})
+          {% else %}
+            N/A
+          {% endif %}
+        </td>
+        <td>
+          {% if glosa.consulta %}Consulta
+          {% elif glosa.medicamento %}Medicamento
+          {% elif glosa.procedimiento %}Procedimiento
+          {% elif glosa.hospitalizacion %}Hospitalización
+          {% elif glosa.otro_servicio %}Otro Servicio
+          {% else %}General
+          {% endif %}
+        </td>
+        <td>{{ glosa.codigo_glosa }}</td>
+        <td>{{ glosa.descripcion }}</td>
+        <td>${{ glosa.valor_glosado|floatformat:2 }}</td>
+        <td>{{ glosa.estado }}</td>
+        <td>{{ glosa.fecha_glosa|date:"Y-m-d" }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">No hay glosas registradas para esta factura.</p>
+{% endif %}
+
+<div class="mt-5 text-center">
+  <form method="post" onsubmit="return confirm('¿Estás seguro de que quieres finalizar la auditoría? Asegúrate de que no haya glosas pendientes.');">
+    {% csrf_token %}
+    <button type="submit" name="finalizar_auditoria" class="btn btn-success btn-lg"><i class="bi bi-check-circle"></i> Finalizar Auditoría</button>
+    <a href="{% url 'auditoria:lista_radicados' %}" class="btn btn-secondary btn-lg ms-3"><i class="bi bi-arrow-left-circle"></i> Volver a Radicados</a>
+  </form>
+</div>
+
 {% endblock %}

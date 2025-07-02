@@ -2,7 +2,8 @@
 from django.urls import path
 from .views import (
     auditar_factura, lista_radicados, lista_glosas, responder_glosa, 
-    glosas_pendientes, reporte_glosas, reporte_cartera, reporte_auditorias
+    glosas_pendientes, reporte_glosas, reporte_cartera, reporte_auditorias,
+    reporte_glosas_por_paciente, reporte_glosas_por_tipo_item
 )
 
 app_name = 'auditoria'
@@ -17,4 +18,6 @@ urlpatterns = [
     path('reportes/glosas/', reporte_glosas, name='reporte_glosas'),
     path('reportes/cartera/', reporte_cartera, name='reporte_cartera'),
     path('reportes/auditorias/', reporte_auditorias, name='reporte_auditorias'),
+    path('reportes/glosas-por-paciente/', reporte_glosas_por_paciente, name='reporte_glosas_por_paciente'),
+    path('reportes/glosas-por-tipo-item/', reporte_glosas_por_tipo_item, name='reporte_glosas_por_tipo_item'),
 ]

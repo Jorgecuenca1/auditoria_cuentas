@@ -49,6 +49,9 @@
                         <li><a class="dropdown-item" href="{% url 'facturacion:radicar_factura' %}">
                             <i class="bi bi-file-plus"></i> Radicar Factura
                         </a></li>
+                        <li><a class="dropdown-item" href="{% url 'facturacion:contrato_list' %}">
+                            <i class="bi bi-journal-text"></i> Gestión de Contratos
+                        </a></li>
                     </ul>
                 </li>
                 {% endif %}
@@ -77,6 +80,12 @@
                         <li><a class="dropdown-item" href="{% url 'auditoria:glosas_pendientes' %}">
                             <i class="bi bi-clock"></i> Glosas Pendientes
                         </a></li>
+                        {% if user.profile.role == 'EPS' %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'facturacion:contrato_list' %}">
+                            <i class="bi bi-journal-text"></i> Consultar Contratos
+                        </a></li>
+                        {% endif %}
                     </ul>
                 </li>
                 {% endif %}
@@ -104,6 +113,31 @@
                         <li><a class="dropdown-item" href="{% url 'auditoria:reporte_auditorias' %}">
                             <i class="bi bi-calendar-check"></i> Reporte de Auditorías
                         </a></li>
+                        <li><a class="dropdown-item" href="{% url 'auditoria:reporte_glosas_por_paciente' %}">
+                            <i class="bi bi-person-lines-fill"></i> Glosas por Paciente
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'auditoria:reporte_glosas_por_tipo_item' %}">
+                            <i class="bi bi-grid"></i> Glosas por Tipo de Ítem RIPS
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'facturacion:contrato_list' %}">
+                            <i class="bi bi-journal-text"></i> Consultar Contratos
+                        </a></li>
+                    </ul>
+                </li>
+                {% endif %}
+
+                <!-- Administración (Solo para ADMIN) -->
+                {% if user.profile.role == 'ADMIN' %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-gear"></i> Administración
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'accounts:user_list' %}">
+                            <i class="bi bi-people"></i> Gestionar Usuarios
+                        </a></li>
+                        {# Futuros enlaces de administración aquí #}
                     </ul>
                 </li>
                 {% endif %}
