@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from facturacion.models import Factura, Paciente, RipsConsulta, RipsMedicamento, RipsProcedimiento, RipsHospitalizacion, RipsOtroServicio
-from .models import Glosa
+from .models import Glosa, TipoGlosa, SubtipoGlosa, SubCodigoGlosa, TipoGlosaRespuestaIPS, SubtipoGlosaRespuestaIPS
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.contrib import messages
@@ -135,21 +135,17 @@ def lista_radicados(request):
 @role_required('ET')
 def auditar_factura(request, factura_id):
     factura = get_object_or_404(Factura, id=factura_id)
-
-    # Recuperar todos los tipos de ítems RIPS asociados a esta factura
+    tipos_glosa = TipoGlosa.objects.all()
     consultas = RipsConsulta.objects.filter(factura=factura)
     medicamentos = RipsMedicamento.objects.filter(factura=factura)
     procedimientos = RipsProcedimiento.objects.filter(factura=factura)
     hospitalizaciones = RipsHospitalizacion.objects.filter(factura=factura)
     otros_servicios = RipsOtroServicio.objects.filter(factura=factura)
-
-    # Extraer identificaciones únicas de pacientes de todos los ítems RIPS
     all_rips_items = list(consultas) + list(medicamentos) + list(procedimientos) + list(hospitalizaciones) + list(otros_servicios)
     identificaciones = sorted(set(item.paciente.numero_documento for item in all_rips_items if item.paciente))
     
     if request.method == 'POST':
         if 'finalizar_auditoria' in request.POST:
-            # Verificar si hay glosas pendientes
             glosas_pendientes = Glosa.objects.filter(factura=factura, estado="Pendiente").exists()
             if glosas_pendientes:
                 messages.error(request, "No se puede finalizar la auditoría mientras haya glosas pendientes por responder.")
@@ -159,21 +155,21 @@ def auditar_factura(request, factura_id):
                 messages.success(request, "Auditoría finalizada exitosamente.")
                 return redirect('auditoria:lista_radicados')
         else:
-            # Lógica para crear glosas, ahora vinculada al tipo de ítem RIPS
-            item_type = request.POST.get('item_type') # ej. 'consulta', 'medicamento'
-            item_pk = request.POST.get('item_pk')     # ID del ítem RIPS específico
-            codigo_glosa = request.POST.get('codigo_glosa')
+            item_type = request.POST.get('item_type')
+            item_pk = request.POST.get('item_pk')
             descripcion = request.POST.get('descripcion')
             valor_glosado = request.POST.get('valor_glosado')
-
+            tipo_glosa_id = request.POST.get('tipo_glosa')
+            subtipo_glosa_id = request.POST.get('subtipo_glosa')
+            subcodigo_glosa_id = request.POST.get('subcodigo_glosa')
             glosa_kwargs = {
                 'factura': factura,
-                'codigo_glosa': codigo_glosa,
                 'descripcion': descripcion,
                 'valor_glosado': valor_glosado,
+                'tipo_glosa_id': tipo_glosa_id,
+                'subtipo_glosa_id': subtipo_glosa_id,
+                'subcodigo_glosa_id': subcodigo_glosa_id,
             }
-            
-            # Asignar el ForeignKey correcto y el paciente del ítem glosado
             related_item = None
             if item_type == 'consulta' and item_pk:
                 related_item = get_object_or_404(RipsConsulta, pk=item_pk)
@@ -190,14 +186,13 @@ def auditar_factura(request, factura_id):
             elif item_type == 'otro_servicio' and item_pk:
                 related_item = get_object_or_404(RipsOtroServicio, pk=item_pk)
                 glosa_kwargs['otro_servicio'] = related_item
-
             if related_item and hasattr(related_item, 'paciente'):
                 glosa_kwargs['paciente'] = related_item.paciente
             else:
                 messages.warning(request, "Glosa creada sin asociación a un ítem RIPS específico o paciente.")
-
             Glosa.objects.create(**glosa_kwargs)
             messages.success(request, "Glosa creada exitosamente.")
+            return redirect('auditoria:auditar_factura', factura_id=factura.id)
     
     glosas = Glosa.objects.filter(factura=factura)
     return render(request, 'auditoria/auditar_factura.html', {
@@ -209,6 +204,7 @@ def auditar_factura(request, factura_id):
         'otros_servicios': otros_servicios,
         'glosas': glosas,
         'identificaciones': identificaciones,
+        'tipos_glosa': tipos_glosa,
     })
 
 @login_required
@@ -222,25 +218,49 @@ def lista_glosas(request, factura_id):
 @role_required(['IPS', 'EPS'])
 def responder_glosa(request, glosa_id):
     glosa = get_object_or_404(Glosa, id=glosa_id)
+    tipos_respuesta = TipoGlosaRespuestaIPS.objects.all()
+
     if request.method == 'POST':
-        respuesta = request.POST.get('respuesta')
-        glosa.respuesta = respuesta
-        glosa.estado = 'Respondida'
+        glosa.descripcion_respuesta = request.POST.get('descripcion_respuesta')
+        glosa.tipo_glosa_respuesta_id = request.POST.get('tipo_glosa_respuesta')
+        glosa.subtipo_glosa_respuesta_id = request.POST.get('subtipo_glosa_respuesta')
+        
+        if 'archivo_soporte_respuesta' in request.FILES:
+            glosa.archivo_soporte_respuesta = request.FILES['archivo_soporte_respuesta']
+
+        # Lógica para la decisión de la glosa por el rol 'IPS'
+        if request.user.profile.role == 'IPS':
+            decision = request.POST.get('decision_glosa')
+            if decision == 'true':
+                glosa.aceptada = True
+                glosa.estado = 'Aceptada'
+            elif decision == 'false':
+                glosa.aceptada = False
+                glosa.estado = 'Rechazada'
+            else:
+                glosa.aceptada = None # Se mantiene como respondida pero sin decisión final
+                glosa.estado = 'Respondida'
+        else: 
+            glosa.estado = 'Respondida'
+
         glosa.fecha_respuesta = timezone.now().date()
         glosa.save()
-        return redirect('auditoria:lista_glosas', factura_id=glosa.factura.id)
-    return render(request, 'auditoria/responder_glosa.html', {'glosa': glosa})
+        
+        messages.success(request, "Respuesta a la glosa enviada exitosamente.")
+        return redirect('auditoria:glosas_pendientes')
+
+    return render(request, 'auditoria/responder_glosa.html', {
+        'glosa': glosa,
+        'tipos_respuesta': tipos_respuesta,
+    })
 
 @login_required
 @role_required(['IPS', 'EPS'])
 def glosas_pendientes(request):
-    # Filtrar glosas según el rol del usuario
     glosas = Glosa.objects.filter(estado="Pendiente")
     if request.user.profile.role == 'IPS':
-        # Si es IPS, solo ver sus propias glosas
         glosas = glosas.filter(factura__ips=request.user.profile)
     elif request.user.profile.role == 'EPS':
-        # Si es EPS, solo ver las glosas de su entidad
         glosas = glosas.filter(factura__eps=request.user.profile)
     
     glosas = glosas.order_by('-fecha_glosa')

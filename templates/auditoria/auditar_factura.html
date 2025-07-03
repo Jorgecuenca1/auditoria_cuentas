@@ -56,7 +56,18 @@
             <input type="hidden" name="item_type" value="consulta">
             <input type="hidden" name="item_pk" value="{{ item.pk }}">
             <div class="col-12">
-              <input type="text" name="codigo_glosa" class="form-control form-control-sm mb-1" placeholder="Código Glosa" required>
+              <select name="tipo_glosa" class="form-select form-select-sm mb-1" required>
+                <option value="">Seleccione Tipo</option>
+                {% for tipo in tipos_glosa %}
+                  <option value="{{ tipo.pk }}">{{ tipo.nombre }}</option>
+                {% endfor %}
+              </select>
+              <select name="subtipo_glosa" class="form-select form-select-sm mb-1" required>
+                <option value="">Seleccione Subtipo</option>
+              </select>
+              <select name="subcodigo_glosa" class="form-select form-select-sm mb-1" required>
+                <option value="">Seleccione Subcódigo</option>
+              </select>
               <textarea name="descripcion" class="form-control form-control-sm mb-1" placeholder="Descripción" rows="2" required></textarea>
               <input type="number" name="valor_glosado" class="form-control form-control-sm mb-1" placeholder="Valor Glosado" step="0.01" required>
               <button type="submit" class="btn btn-outline-danger btn-sm w-100">Glosar</button>
@@ -107,7 +118,18 @@
             <input type="hidden" name="item_type" value="medicamento">
             <input type="hidden" name="item_pk" value="{{ item.pk }}">
             <div class="col-12">
-              <input type="text" name="codigo_glosa" class="form-control form-control-sm mb-1" placeholder="Código Glosa" required>
+              <select name="tipo_glosa" class="form-select form-select-sm mb-1" required>
+                <option value="">Seleccione Tipo</option>
+                {% for tipo in tipos_glosa %}
+                  <option value="{{ tipo.pk }}">{{ tipo.nombre }}</option>
+                {% endfor %}
+              </select>
+              <select name="subtipo_glosa" class="form-select form-select-sm mb-1" required>
+                <option value="">Seleccione Subtipo</option>
+              </select>
+              <select name="subcodigo_glosa" class="form-select form-select-sm mb-1" required>
+                <option value="">Seleccione Subcódigo</option>
+              </select>
               <textarea name="descripcion" class="form-control form-control-sm mb-1" placeholder="Descripción" rows="2" required></textarea>
               <input type="number" name="valor_glosado" class="form-control form-control-sm mb-1" placeholder="Valor Glosado" step="0.01" required>
               <button type="submit" class="btn btn-outline-danger btn-sm w-100">Glosar</button>
@@ -154,7 +176,18 @@
             <input type="hidden" name="item_type" value="procedimiento">
             <input type="hidden" name="item_pk" value="{{ item.pk }}">
             <div class="col-12">
-              <input type="text" name="codigo_glosa" class="form-control form-control-sm mb-1" placeholder="Código Glosa" required>
+              <select name="tipo_glosa" class="form-select form-select-sm mb-1" required>
+                <option value="">Seleccione Tipo</option>
+                {% for tipo in tipos_glosa %}
+                  <option value="{{ tipo.pk }}">{{ tipo.nombre }}</option>
+                {% endfor %}
+              </select>
+              <select name="subtipo_glosa" class="form-select form-select-sm mb-1" required>
+                <option value="">Seleccione Subtipo</option>
+              </select>
+              <select name="subcodigo_glosa" class="form-select form-select-sm mb-1" required>
+                <option value="">Seleccione Subcódigo</option>
+              </select>
               <textarea name="descripcion" class="form-control form-control-sm mb-1" placeholder="Descripción" rows="2" required></textarea>
               <input type="number" name="valor_glosado" class="form-control form-control-sm mb-1" placeholder="Valor Glosado" step="0.01" required>
               <button type="submit" class="btn btn-outline-danger btn-sm w-100">Glosar</button>
@@ -205,7 +238,18 @@
             <input type="hidden" name="item_type" value="hospitalizacion">
             <input type="hidden" name="item_pk" value="{{ item.pk }}">
             <div class="col-12">
-              <input type="text" name="codigo_glosa" class="form-control form-control-sm mb-1" placeholder="Código Glosa" required>
+              <select name="tipo_glosa" class="form-select form-select-sm mb-1" required>
+                <option value="">Seleccione Tipo</option>
+                {% for tipo in tipos_glosa %}
+                  <option value="{{ tipo.pk }}">{{ tipo.nombre }}</option>
+                {% endfor %}
+              </select>
+              <select name="subtipo_glosa" class="form-select form-select-sm mb-1" required>
+                <option value="">Seleccione Subtipo</option>
+              </select>
+              <select name="subcodigo_glosa" class="form-select form-select-sm mb-1" required>
+                <option value="">Seleccione Subcódigo</option>
+              </select>
               <textarea name="descripcion" class="form-control form-control-sm mb-1" placeholder="Descripción" rows="2" required></textarea>
               <input type="number" name="valor_glosado" class="form-control form-control-sm mb-1" placeholder="Valor Glosado" step="0.01" required>
               <button type="submit" class="btn btn-outline-danger btn-sm w-100">Glosar</button>
@@ -258,7 +302,18 @@
             <input type="hidden" name="item_type" value="otro_servicio">
             <input type="hidden" name="item_pk" value="{{ item.pk }}">
             <div class="col-12">
-              <input type="text" name="codigo_glosa" class="form-control form-control-sm mb-1" placeholder="Código Glosa" required>
+              <select name="tipo_glosa" class="form-select form-select-sm mb-1" required>
+                <option value="">Seleccione Tipo</option>
+                {% for tipo in tipos_glosa %}
+                  <option value="{{ tipo.pk }}">{{ tipo.nombre }}</option>
+                {% endfor %}
+              </select>
+              <select name="subtipo_glosa" class="form-select form-select-sm mb-1" required>
+                <option value="">Seleccione Subtipo</option>
+              </select>
+              <select name="subcodigo_glosa" class="form-select form-select-sm mb-1" required>
+                <option value="">Seleccione Subcódigo</option>
+              </select>
               <textarea name="descripcion" class="form-control form-control-sm mb-1" placeholder="Descripción" rows="2" required></textarea>
               <input type="number" name="valor_glosado" class="form-control form-control-sm mb-1" placeholder="Valor Glosado" step="0.01" required>
               <button type="submit" class="btn btn-outline-danger btn-sm w-100">Glosar</button>
@@ -318,7 +373,15 @@
           {% else %}General
           {% endif %}
         </td>
-        <td>{{ glosa.codigo_glosa }}</td>
+        <td>
+          {% if glosa.subcodigo_glosa %}
+            {{ glosa.subcodigo_glosa.codigo }}
+          {% elif glosa.subtipo_glosa %}
+            {{ glosa.subtipo_glosa.codigo }}
+          {% elif glosa.tipo_glosa %}
+            {{ glosa.tipo_glosa.codigo }}
+          {% endif %}
+        </td>
         <td>{{ glosa.descripcion }}</td>
         <td>${{ glosa.valor_glosado|floatformat:2 }}</td>
         <td>{{ glosa.estado }}</td>
@@ -339,5 +402,58 @@
     <a href="{% url 'auditoria:lista_radicados' %}" class="btn btn-secondary btn-lg ms-3"><i class="bi bi-arrow-left-circle"></i> Volver a Radicados</a>
   </form>
 </div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const forms = document.querySelectorAll('form[method="post"]');
+
+    forms.forEach(form => {
+        const tipoGlosaSelect = form.querySelector('select[name="tipo_glosa"]');
+        const subtipoGlosaSelect = form.querySelector('select[name="subtipo_glosa"]');
+        const subcodigoGlosaSelect = form.querySelector('select[name="subcodigo_glosa"]');
+
+        if (tipoGlosaSelect && subtipoGlosaSelect && subcodigoGlosaSelect) {
+            tipoGlosaSelect.addEventListener('change', function() {
+                const tipoId = this.value;
+                subtipoGlosaSelect.innerHTML = '<option value="">Cargando...</option>';
+                subcodigoGlosaSelect.innerHTML = '<option value="">Seleccione Subcódigo</option>';
+
+                if (tipoId) {
+                    fetch(`/auditoria/api/subtipos/${tipoId}/`)
+                        .then(response => response.json())
+                        .then(data => {
+                            subtipoGlosaSelect.innerHTML = '<option value="">Seleccione Subtipo</option>';
+                            data.forEach(subtipo => {
+                                subtipoGlosaSelect.innerHTML += `<option value="${subtipo.pk}">${subtipo.nombre}</option>`;
+                            });
+                        });
+                } else {
+                    subtipoGlosaSelect.innerHTML = '<option value="">Seleccione Subtipo</option>';
+                }
+            });
+
+            subtipoGlosaSelect.addEventListener('change', function() {
+                const subtipoId = this.value;
+                subcodigoGlosaSelect.innerHTML = '<option value="">Cargando...</option>';
+
+                if (subtipoId) {
+                    fetch(`/auditoria/api/subcodigos/${subtipoId}/`)
+                        .then(response => response.json())
+                        .then(data => {
+                            subcodigoGlosaSelect.innerHTML = '<option value="">Seleccione Subcódigo</option>';
+                            data.forEach(subcodigo => {
+                                subcodigoGlosaSelect.innerHTML += `<option value="${subcodigo.pk}">${subcodigo.nombre}</option>`;
+                            });
+                        });
+                } else {
+                    subcodigoGlosaSelect.innerHTML = '<option value="">Seleccione Subcódigo</option>';
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %}
 
 {% endblock %}

@@ -1,21 +1,80 @@
 {% extends 'base.html' %}
 {% block title %}Responder Glosa{% endblock %}
+
 {% block content %}
-<h2 class="mb-4">Responder Glosa</h2>
-<div class="card">
-  <div class="card-body">
-    <h5 class="card-title">Descripción de la Glosa</h5>
-    <p class="card-text">{{ glosa.descripcion }}</p>
-    <h6>Valor: ${{ glosa.valor|floatformat:2 }}</h6>
-    <form method="post">
-      {% csrf_token %}
-      <div class="mb-3">
-        <label for="respuesta" class="form-label">Respuesta</label>
-        <textarea name="respuesta" id="respuesta" class="form-control" rows="4" required>{{ glosa.respuesta }}</textarea>
-      </div>
-      <button type="submit" class="btn btn-primary">Enviar Respuesta</button>
-      <a href="{% url 'auditoria:lista_glosas' glosa.factura.id %}" class="btn btn-secondary ms-2">Cancelar</a>
+<div class="container mt-4">
+    <h2>Responder a Glosa de la Factura <span class="badge bg-primary">{{ glosa.factura.numero }}</span></h2>
+    <p><strong>Glosa ID:</strong> {{ glosa.id }}</p>
+    <p><strong>Descripción de la Glosa:</strong> {{ glosa.descripcion }}</p>
+    <p><strong>Valor Glosado:</strong> ${{ glosa.valor_glosado|floatformat:2 }}</p>
+
+    <form method="post" enctype="multipart/form-data" class="mt-4">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="tipo_glosa_respuesta" class="form-label">Tipo de Respuesta</label>
+            <select id="tipo_glosa_respuesta" name="tipo_glosa_respuesta" class="form-select" required>
+                <option value="">Seleccione un tipo de respuesta</option>
+                {% for tipo in tipos_respuesta %}
+                    <option value="{{ tipo.pk }}">{{ tipo.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="subtipo_glosa_respuesta" class="form-label">Subtipo de Respuesta</label>
+            <select id="subtipo_glosa_respuesta" name="subtipo_glosa_respuesta" class="form-select" required>
+                <option value="">Seleccione un subtipo</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="descripcion_respuesta" class="form-label">Descripción de la Respuesta</label>
+            <textarea id="descripcion_respuesta" name="descripcion_respuesta" class="form-control" rows="4" required></textarea>
+        </div>
+        <div class="mb-3">
+            <label for="archivo_soporte_respuesta" class="form-label">Adjuntar Soporte (Opcional)</label>
+            <input type="file" id="archivo_soporte_respuesta" name="archivo_soporte_respuesta" class="form-control">
+        </div>
+
+        {% if user.profile.role == 'IPS' %}
+        <div class="mb-3">
+            <label for="decision_glosa" class="form-label">Decisión sobre la Glosa</label>
+            <select id="decision_glosa" name="decision_glosa" class="form-select">
+                <option value="">-- Mantener Sin Decisión --</option>
+                <option value="true" {% if glosa.aceptada %}selected{% endif %}>Aceptada</option>
+                <option value="false" {% if glosa.aceptada == False %}selected{% endif %}>Rechazada</option>
+            </select>
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-success"><i class="bi bi-send"></i> Enviar Respuesta</button>
+        <a href="{% url 'auditoria:glosas_pendientes' %}" class="btn btn-secondary ms-2"><i class="bi bi-x-circle"></i> Cancelar</a>
     </form>
-  </div>
 </div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoRespuestaSelect = document.getElementById('tipo_glosa_respuesta');
+    const subtipoRespuestaSelect = document.getElementById('subtipo_glosa_respuesta');
+
+    tipoRespuestaSelect.addEventListener('change', function() {
+        const tipoId = this.value;
+        subtipoRespuestaSelect.innerHTML = '<option value="">Cargando...</option>';
+
+        if (tipoId) {
+            // Asumiendo que tienes un endpoint similar para los subtipos de respuesta
+            fetch(`/auditoria/api/subtipos_respuesta/${tipoId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    subtipoRespuestaSelect.innerHTML = '<option value="">Seleccione un subtipo</option>';
+                    data.forEach(subtipo => {
+                        subtipoRespuestaSelect.innerHTML += `<option value="${subtipo.pk}">${subtipo.nombre}</option>`;
+                    });
+                });
+        } else {
+            subtipoRespuestaSelect.innerHTML = '<option value="">Seleccione un subtipo</option>';
+        }
+    });
+});
+</script>
+{% endblock %}
 {% endblock %} 

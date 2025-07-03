@@ -1,23 +1,23 @@
 # 3) auditoria/urls.py
-from django.urls import path
-from .views import (
-    auditar_factura, lista_radicados, lista_glosas, responder_glosa, 
-    glosas_pendientes, reporte_glosas, reporte_cartera, reporte_auditorias,
-    reporte_glosas_por_paciente, reporte_glosas_por_tipo_item
-)
+from django.urls import path, include
+from . import views, api_views
 
 app_name = 'auditoria'
 
 urlpatterns = [
-    path('radicados/', lista_radicados, name='lista_radicados'),
-    path('factura/<int:factura_id>/', auditar_factura, name='auditar_factura'),
-    path('glosas/<int:factura_id>/', lista_glosas, name='lista_glosas'),
-    path('glosa/<int:glosa_id>/responder/', responder_glosa, name='responder_glosa'),
-    path('glosas/pendientes/', glosas_pendientes, name='glosas_pendientes'),
-    # URLs de reportes
-    path('reportes/glosas/', reporte_glosas, name='reporte_glosas'),
-    path('reportes/cartera/', reporte_cartera, name='reporte_cartera'),
-    path('reportes/auditorias/', reporte_auditorias, name='reporte_auditorias'),
-    path('reportes/glosas-por-paciente/', reporte_glosas_por_paciente, name='reporte_glosas_por_paciente'),
-    path('reportes/glosas-por-tipo-item/', reporte_glosas_por_tipo_item, name='reporte_glosas_por_tipo_item'),
+    path('radicados/', views.lista_radicados, name='lista_radicados'),
+    path('factura/<int:factura_id>/', views.auditar_factura, name='auditar_factura'),
+    path('factura/<int:factura_id>/glosas/', views.lista_glosas, name='lista_glosas'),
+    path('glosa/<int:glosa_id>/responder/', views.responder_glosa, name='responder_glosa'),
+    path('glosas-pendientes/', views.glosas_pendientes, name='glosas_pendientes'),
+
+    # URLs para Reportes
+    path('reportes/glosas/', views.reporte_glosas, name='reporte_glosas'),
+    path('reportes/cartera/', views.reporte_cartera, name='reporte_cartera'),
+    path('reportes/auditorias/', views.reporte_auditorias, name='reporte_auditorias'),
+    path('reportes/glosas-por-paciente/', views.reporte_glosas_por_paciente, name='reporte_glosas_por_paciente'),
+    path('reportes/glosas-por-tipo-item/', views.reporte_glosas_por_tipo_item, name='reporte_glosas_por_tipo_item'),
+
+    # API endpoints
+    path('api/', include('auditoria.api_urls')),
 ]
