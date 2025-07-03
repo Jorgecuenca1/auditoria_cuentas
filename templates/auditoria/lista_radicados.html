@@ -1,39 +1,84 @@
 {% extends 'base.html' %}
 {% block title %}Facturas Radicadas{% endblock %}
+
 {% block content %}
-<h2 class="mb-4">Facturas Radicadas para Auditar</h2>
-<div class="table-responsive">
-  <table class="table table-bordered table-hover align-middle">
-    <thead class="table-light">
-      <tr>
-        <th>Número</th>
-        <th>CUFE</th>
-        <th>IPS</th>
-        <th>EPS</th>
-        <th>Valor Bruto</th>
-        <th>Fecha Radicación</th>
-        <th>Estado</th>
-        <th>Acción</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for factura in facturas %}
-      <tr>
-        <td>{{ factura.numero }}</td>
-        <td>{{ factura.cufe }}</td>
-        <td>{{ factura.ips }}</td>
-        <td>{{ factura.eps }}</td>
-        <td>${{ factura.valor_bruto|floatformat:2 }}</td>
-        <td>{{ factura.fecha_radicacion }}</td>
-        <td>{{ factura.estado_auditoria }}</td>
-        <td>
-          <a href="{% url 'auditoria:auditar_factura' factura.id %}" class="btn btn-primary btn-sm">Auditar</a>
-        </td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="8" class="text-center">No hay facturas radicadas.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="container mt-4">
+  <h2 class="mb-4">Facturas Radicadas para Auditar</h2>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="table-responsive">
+    <table class="table table-bordered table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Número</th>
+          <th>CUFE</th>
+          <th>IPS</th>
+          <th>EPS</th>
+          <th>Valor Bruto</th>
+          <th>Fecha Radicación</th>
+          <th>Estado</th>
+          <th>Auditor</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for factura in facturas %}
+        <tr>
+          <td>{{ factura.numero }}</td>
+          <td>{{ factura.cufe }}</td>
+          <td>{{ factura.ips.entidad_nombre }}</td>
+          <td>{{ factura.eps.entidad_nombre }}</td>
+          <td>${{ factura.valor_bruto|floatformat:2 }}</td>
+          <td>{{ factura.fecha_radicacion }}</td>
+          <td>{{ factura.estado_auditoria }}</td>
+
+          {# Columna Auditor #}
+          <td>
+            {% if user.profile.role == 'ET' %}
+              <form method="post" class="d-flex align-items-center">
+                {% csrf_token %}
+                <input type="hidden" name="factura_id" value="{{ factura.id }}">
+                <select name="auditor_id" class="form-select form-select-sm me-2">
+                  <option value="">— asignar —</option>
+                  {% for aud in auditores %}
+                    <option value="{{ aud.id }}"
+                      {% if factura.auditor and factura.auditor.id == aud.id %}selected{% endif %}>
+                      {{ aud.get_full_name|default:aud.username }}
+                    </option>
+                  {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Guardar</button>
+              </form>
+            {% else %}
+              {{ factura.auditor.get_full_name|default:factura.auditor.username|default:"—" }}
+            {% endif %}
+          </td>
+
+          {# Columna Acción #}
+          <td>
+            {% if user.profile.role == 'AUDITOR' %}
+              <a href="{% url 'auditoria:auditar_factura' factura.id %}"
+                 class="btn btn-primary btn-sm">Auditar</a>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="9" class="text-center">No hay facturas radicadas.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
-{% endblock %} 
+{% endblock %}

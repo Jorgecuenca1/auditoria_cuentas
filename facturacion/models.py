@@ -1,5 +1,6 @@
 from django.db import models
 from accounts.models import Profile
+from django.contrib.auth.models import User
 
 class Contrato(models.Model):
     numero = models.CharField(max_length=50)
@@ -41,6 +42,14 @@ class Factura(models.Model):
     estado_auditoria = models.CharField(max_length=20, default="Radicada")
     archivo_rips = models.FileField(upload_to='rips/')
     contrato = models.ForeignKey('Contrato', on_delete=models.SET_NULL, null=True, blank=True)
+    auditor = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='facturas_auditadas',
+        limit_choices_to={'profile__role': 'AUDITOR'}
+    )
     def __str__(self):
         return f"Factura {self.numero} CUFE {self.cufe}"
 

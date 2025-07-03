@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from django.shortcuts import render, redirect, get_object_or_404
 from facturacion.models import Factura, Paciente, RipsConsulta, RipsMedicamento, RipsProcedimiento, RipsHospitalizacion, RipsOtroServicio
 from .models import Glosa, TipoGlosa, SubtipoGlosa, SubCodigoGlosa, TipoGlosaRespuestaIPS, SubtipoGlosaRespuestaIPS
@@ -125,14 +126,59 @@ def reporte_glosas_por_tipo_item(request):
         'glosas_por_tipo': glosas_por_tipo
     })
 
-@login_required
-@role_required('ET')
-def lista_radicados(request):
-    facturas = Factura.objects.all()
-    return render(request, 'auditoria/lista_radicados.html', {'facturas': facturas})
+from .models import Factura
+from django.contrib.auth.models import User
+from django.contrib import messages
+from django.shortcuts import get_object_or_404
 
 @login_required
-@role_required('ET')
+@role_required(['ET', 'AUDITOR'])
+def lista_radicados(request):
+    # Proceso de asignación por parte de la ET
+    if request.method == 'POST' and request.user.profile.role == 'ET':
+        factura_id = request.POST.get('factura_id')
+        auditor_id = request.POST.get('auditor_id')
+        factura = get_object_or_404(Factura, pk=factura_id)
+        auditor = get_object_or_404(User, pk=auditor_id, profile__role='AUDITOR')
+        factura.auditor = auditor
+        factura.save()
+        messages.success(request, f'Auditor "{auditor.get_full_name() or auditor.username}" asignado a la factura {factura.numero}.')
+        return redirect('auditoria:lista_radicados')
+
+    # Filtrado según rol
+    if request.user.profile.role == 'AUDITOR':
+        facturas = Factura.objects.filter(auditor=request.user)
+    else:  # ET
+        facturas = Factura.objects.all()
+
+    # Solo los usuarios con role AUDITOR para poblar el <select>
+    auditores = User.objects.filter(profile__role='AUDITOR')
+
+    return render(request, 'auditoria/lista_radicados.html', {
+        'facturas': facturas,
+        'auditores': auditores,
+    })
+from functools import wraps
+from django.shortcuts import redirect
+
+def role_required(*allowed_roles):
+    """
+    Decorator que permite acceso solo si request.user.profile.role
+    está dentro de allowed_roles.
+    Uso:
+      @role_required('ET', 'AUDITOR')
+    """
+    def decorator(view_fn):
+        @wraps(view_fn)
+        def _wrapped(request, *args, **kwargs):
+            user_role = getattr(request.user, 'profile', None) and request.user.profile.role
+            if user_role not in allowed_roles:
+                return redirect('accounts:forbidden')  # o a donde quieras
+            return view_fn(request, *args, **kwargs)
+        return _wrapped
+    return decorator
+@login_required
+@role_required('ET','AUDITOR')
 def auditar_factura(request, factura_id):
     factura = get_object_or_404(Factura, id=factura_id)
     tipos_glosa = TipoGlosa.objects.all()

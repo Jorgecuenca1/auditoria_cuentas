@@ -57,7 +57,7 @@
                 {% endif %}
 
                 <!-- Auditoría -->
-                {% if user.profile.role == 'ET' %}
+                {% if user.profile.role == 'ET' or user.profile.role == 'AUDITOR' %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                         <i class="bi bi-clipboard-check"></i> Auditoría
