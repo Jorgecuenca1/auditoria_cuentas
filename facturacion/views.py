@@ -1,12 +1,13 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from .models import Factura, Paciente, Contrato, RipsConsulta, RipsMedicamento, RipsProcedimiento, RipsHospitalizacion, RipsOtroServicio, TarifaContrato
-from .forms import FacturaForm, RipsUploadForm, ContratoForm, TarifaContratoForm
+from .models import Factura, Paciente, Contrato, RipsConsulta, RipsMedicamento, RipsProcedimiento, RipsHospitalizacion, RipsOtroServicio, TarifaContrato, Lote, Resolucion, ManualTarifario
+from .forms import FacturaForm, RipsUploadForm, ContratoForm, TarifaContratoForm, LoteForm, AsignarAuditorLoteForm, ResolucionForm
 from accounts.models import Profile, CatalogoCUPS, CatalogoCIE10, CatalogoCUMS, CatalogoMunicipio, CatalogoPais
 from .validators import validate_rips_item, validate_rips_user
 import json
 from datetime import datetime, date
 from django.contrib.auth.decorators import login_required
+from django.template.loader import render_to_string # Importar para renderizar HTML
 
 def parse_date_time(dt_str):
     if not dt_str:
@@ -223,8 +224,14 @@ def contrato_update(request, pk):
             return redirect('facturacion:contrato_list')
     else:
         form = ContratoForm(instance=contrato)
-    tarifas = TarifaContrato.objects.filter(contrato=contrato)
-    return render(request, 'facturacion/contrato_form.html', {'form': form, 'title': 'Editar Contrato', 'contrato': contrato, 'tarifas': tarifas})
+    contrato_tarifas = TarifaContrato.objects.filter(contrato=contrato)
+    manual_tarifarios = ManualTarifario.objects.all() # Fetch all ManualTarifario objects
+    return render(request, 'facturacion/contrato_form.html', {'form': form, 'title': 'Editar Contrato', 'contrato': contrato, 'contrato_tarifas': contrato_tarifas, 'manual_tarifarios': manual_tarifarios})
+
+@login_required
+def contrato_detail(request, pk):
+    contrato = get_object_or_404(Contrato, pk=pk)
+    return render(request, 'facturacion/contrato_detail.html', {'contrato': contrato})
 
 @login_required
 def tarifa_contrato_list(request, contrato_pk):
@@ -269,4 +276,180 @@ def tarifa_contrato_delete(request, pk):
         tarifa.delete()
         messages.success(request, "Tarifa eliminada exitosamente.")
         return redirect('facturacion:contrato_update', pk=contrato_pk)
-    return render(request, 'facturacion/confirm_delete.html', {'object': tarifa, 'contrato_pk': contrato_pk})
+    return render(request, 'facturacion/tarifa_contrato_confirm_delete.html', {'tarifa': tarifa})
+
+# Vistas para Lotes de Facturas
+
+@login_required
+def lote_list(request):
+    lotes = Lote.objects.all().order_by('-fecha_creacion')
+    return render(request, 'facturacion/lote_list.html', {'lotes': lotes})
+
+@login_required
+def lote_create(request):
+    if request.method == 'POST':
+        form = LoteForm(request.POST)
+        if form.is_valid():
+            lote = form.save(commit=False)
+            # El auditor se asigna después, en la vista de detalle
+            lote.save() # Guardar el lote para obtener un ID
+
+            # Asignar el lote a las facturas seleccionadas
+            facturas = form.cleaned_data['facturas']
+            for factura in facturas:
+                factura.lote = lote
+                factura.estado_auditoria = 'En Lote'
+                factura.save()
+
+            messages.success(request, f"Lote '{lote.nombre}' creado exitosamente con {facturas.count()} facturas.")
+            return redirect('facturacion:lote_list')
+        else:
+            messages.error(request, "Error al crear el lote. Por favor, revisa los datos.")
+    else:
+        form = LoteForm()
+        # Obtener facturas disponibles y agruparlas por IPS
+        facturas_disponibles = Factura.objects.filter(
+            lote__isnull=True,
+            estado_auditoria='Radicada',
+            auditor__isnull=True
+        ).select_related('ips').order_by('ips__entidad_nombre', 'numero')
+
+        facturas_por_ips = {}
+        for factura in facturas_disponibles:
+            ips_nombre = factura.ips.entidad_nombre if factura.ips else "Sin IPS Asignada"
+            if ips_nombre not in facturas_por_ips:
+                facturas_por_ips[ips_nombre] = []
+            facturas_por_ips[ips_nombre].append(factura)
+
+    return render(request, 'facturacion/lote_form.html', {
+        'form': form,
+        'title': 'Crear Nuevo Lote de Facturas',
+        'facturas_por_ips': facturas_por_ips,
+    })
+
+@login_required
+def lote_detail(request, pk):
+    lote = get_object_or_404(Lote, pk=pk)
+    asignar_auditor_form = AsignarAuditorLoteForm(instance=lote)
+
+    if 'asignar_auditor' in request.POST:
+        asignar_auditor_form = AsignarAuditorLoteForm(request.POST, instance=lote)
+        if asignar_auditor_form.is_valid():
+            lote = asignar_auditor_form.save(commit=False)
+            lote.estado = 'Asignado'
+            lote.save()
+
+            # Asignar el mismo auditor a todas las facturas del lote
+            auditor_asignado = lote.auditor
+            facturas_del_lote = lote.facturas.all()
+            for factura in facturas_del_lote:
+                factura.auditor = auditor_asignado
+                factura.estado_auditoria = 'Asignada'
+                factura.save()
+            
+            messages.success(request, f"Auditor '{auditor_asignado}' asignado al lote '{lote.nombre}' y a sus {facturas_del_lote.count()} facturas.")
+            return redirect('facturacion:lote_detail', pk=lote.pk)
+
+    facturas_en_lote = lote.facturas.all()
+    return render(request, 'facturacion/lote_detail.html', {
+        'lote': lote,
+        'facturas': facturas_en_lote,
+        'asignar_auditor_form': asignar_auditor_form,
+        'title': f"Detalle del Lote {lote.nombre}"
+    })
+
+# Vistas para Resoluciones
+
+@login_required
+def resolucion_list(request):
+    resoluciones = Resolucion.objects.all().order_by('-fecha_creacion')
+    return render(request, 'facturacion/resolucion_list.html', {'resoluciones': resoluciones})
+
+@login_required
+def resolucion_create(request):
+    if request.method == 'POST':
+        form = ResolucionForm(request.POST)
+        if form.is_valid():
+            resolucion = form.save(commit=False)
+            resolucion.save() # Guardar el lote para obtener un ID y popular fecha_creacion
+            # Generar el cuerpo de la resolución en HTML
+            context = {
+                'numero_resolucion': resolucion.numero_resolucion,
+                'entidad_territorial': resolucion.entidad_territorial,
+                'fecha_creacion': resolucion.fecha_creacion.strftime("%Y-%m-%d"),
+                'nombre_firmante': resolucion.nombre_firmante,
+                'facturas': resolucion.facturas.all(), # Asegurarse de que las facturas estén guardadas para acceder a ellas
+            }
+            form.save_m2m() # Guardar la relación ManyToMany
+            
+            # Actualizar el estado de las facturas a 'Aprobada' y setear la relación con la resolución
+            for factura in resolucion.facturas.all():
+                factura.estado_auditoria = 'Aprobada'
+                factura.save()
+
+            # Recargar facturas para la renderización del HTML con el ID de la resolución
+            context['facturas'] = resolucion.facturas.all()
+
+            resolucion.cuerpo_resolucion_html = render_to_string('facturacion/resolucion_render.html', context)
+            resolucion.save()
+
+            messages.success(request, f"Resolución N.º {resolucion.numero_resolucion} creada exitosamente.")
+            return redirect('facturacion:resolucion_detail', pk=resolucion.pk)
+        else:
+            messages.error(request, "Error al crear la resolución. Por favor, revisa los datos.")
+    else:
+        form = ResolucionForm()
+    return render(request, 'facturacion/resolucion_form.html', {'form': form, 'title': 'Crear Nueva Resolución'})
+
+@login_required
+def resolucion_detail(request, pk):
+    resolucion = get_object_or_404(Resolucion, pk=pk)
+    return render(request, 'facturacion/resolucion_detail.html', {'resolucion': resolucion})
+
+@login_required
+def resolucion_render_html(request, pk):
+    resolucion = get_object_or_404(Resolucion, pk=pk)
+    return render(request, 'facturacion/resolucion_render.html', {
+        'numero_resolucion': resolucion.numero_resolucion,
+        'entidad_territorial': resolucion.entidad_territorial,
+        'fecha_creacion': resolucion.fecha_creacion.strftime("%Y-%m-%d"),
+        'nombre_firmante': resolucion.nombre_firmante,
+        'facturas': resolucion.facturas.all(),
+    })
+
+@login_required
+def resolucion_edit(request, pk):
+    resolucion = get_object_or_404(Resolucion, pk=pk)
+    if request.method == 'POST':
+        form = ResolucionForm(request.POST, instance=resolucion)
+        if form.is_valid():
+            resolucion = form.save(commit=False)
+            # Generar el cuerpo de la resolución en HTML
+            context = {
+                'numero_resolucion': resolucion.numero_resolucion,
+                'entidad_territorial': resolucion.entidad_territorial,
+                'fecha_creacion': resolucion.fecha_creacion.strftime("%Y-%m-%d"),
+                'nombre_firmante': resolucion.nombre_firmante,
+                'facturas': resolucion.facturas.all(),
+            }
+            resolucion.save()
+            form.save_m2m() # Guardar la relación ManyToMany
+
+            # Actualizar el estado de las facturas a 'Aprobada'
+            for factura in resolucion.facturas.all():
+                factura.estado_auditoria = 'Aprobada'
+                factura.save()
+            
+            # Recargar facturas para la renderización del HTML con el ID de la resolución
+            context['facturas'] = resolucion.facturas.all()
+
+            resolucion.cuerpo_resolucion_html = render_to_string('facturacion/resolucion_render.html', context)
+            resolucion.save()
+
+            messages.success(request, f"Resolución N.º {resolucion.numero_resolucion} actualizada exitosamente.")
+            return redirect('facturacion:resolucion_detail', pk=resolucion.pk)
+        else:
+            messages.error(request, "Error al actualizar la resolución. Por favor, revisa los datos.")
+    else:
+        form = ResolucionForm(instance=resolucion)
+    return render(request, 'facturacion/resolucion_form.html', {'form': form, 'title': f'Editar Resolución {resolucion.numero_resolucion}'})

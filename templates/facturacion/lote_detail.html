@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">{{ title }}</h2>
+    <a href="{% url 'facturacion:lote_list' %}" class="btn btn-secondary"><i class="bi bi-arrow-left-circle"></i> Volver a Lotes</a>
+</div>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<div class="row">
+    <!-- Columna de Detalles del Lote y Asignación de Auditor -->
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Información del Lote</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Nombre:</strong> {{ lote.nombre }}</p>
+                <p><strong>Fecha de Creación:</strong> {{ lote.fecha_creacion|date:"Y-m-d H:i" }}</p>
+                <p><strong>Estado:</strong> <span class="badge bg-info text-dark">{{ lote.get_estado_display }}</span></p>
+                <p><strong>Auditor Asignado:</strong>
+                    {% if lote.auditor %}
+                        <span class="badge bg-success">{{ lote.auditor.username }}</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark">Sin Asignar</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Asignar Auditor al Lote</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {{ asignar_auditor_form|crispy }}
+                    <div class="d-grid">
+                        <button type="submit" name="asignar_auditor" class="btn btn-primary mt-3">Asignar Auditor</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna de Facturas en el Lote -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Facturas Incluidas en este Lote ({{ facturas.count }})</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Número Factura</th>
+                                <th>Fecha Radicación</th>
+                                <th>Valor Bruto</th>
+                                <th>Estado Auditoría</th>
+                                <th>Auditor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for factura in facturas %}
+                            <tr>
+                                <td>{{ factura.numero }}</td>
+                                <td>{{ factura.fecha_radicacion|date:"Y-m-d" }}</td>
+                                <td>${{ factura.valor_bruto|floatformat:2 }}</td>
+                                <td>{{ factura.estado_auditoria }}</td>
+                                <td>
+                                    {% if factura.auditor %}
+                                        {{ factura.auditor.username }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">No hay facturas en este lote.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

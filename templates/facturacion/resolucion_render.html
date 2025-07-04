@@ -1,0 +1,29 @@
+<div style="font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+    <h3 style="text-align: center; color: #333;">RESOLUCIÓN N.º {{ numero_resolucion }}</h3>
+    <p style="text-align: center; font-weight: bold;">Secretaría de Salud del {{ entidad_territorial }}</p>
+
+    <p style="text-align: right; margin-top: 30px;">Fecha de creación: {{ fecha_creacion }}</p>
+
+    <h4 style="color: #333; margin-top: 40px;">CONSIDERANDO</h4>
+    <p>Que la Secretaría de Salud del {{ entidad_territorial }}, en uso de sus facultades legales conferidas por la Ley X de 19XX y demás normas vigentes, requiere expedir la presente resolución para efectos de registro y validación de facturas.</p>
+
+    <h4 style="color: #333; margin-top: 40px;">RESUELVE</h4>
+    <ol>
+        <li>Aprobar las facturas con los siguientes números y valores:
+            <ul style="list-style-type: none; padding-left: 20px;">
+                {% for factura in facturas %}
+                    <li><strong>Número:</strong> {{ factura.numero }} - <strong>Valor Bruto:</strong> ${{ factura.valor_bruto|floatformat:2 }}</li>
+                {% empty %}
+                    <li>No se especificaron facturas para esta resolución.</li>
+                {% endfor %}
+            </ul>
+        </li>
+        <li>Ordenar la ejecución de las disposiciones contenidas en esta resolución.</li>
+    </ol>
+
+    <p style="margin-top: 50px; text-align: center;"><strong>Notifíquese a las partes interesadas y cúmplase.</strong></p>
+
+    <p style="margin-top: 60px; text-align: center;">_______________________________</p>
+    <p style="text-align: center;"><strong>{{ nombre_firmante }}</strong></p>
+    <p style="text-align: center;">Cargo: Secretario(a) de Salud</p>
+</div> 

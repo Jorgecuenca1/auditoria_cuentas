@@ -261,7 +261,7 @@ def lista_glosas(request, factura_id):
     return render(request, 'auditoria/lista_glosas.html', {'factura': factura, 'glosas': glosas})
 
 @login_required
-@role_required(['IPS', 'EPS'])
+@role_required('IPS')
 def responder_glosa(request, glosa_id):
     glosa = get_object_or_404(Glosa, id=glosa_id)
     tipos_respuesta = TipoGlosaRespuestaIPS.objects.all()
@@ -301,7 +301,7 @@ def responder_glosa(request, glosa_id):
     })
 
 @login_required
-@role_required(['IPS', 'EPS'])
+@role_required('IPS')
 def glosas_pendientes(request):
     glosas = Glosa.objects.filter(estado="Pendiente")
     if request.user.profile.role == 'IPS':

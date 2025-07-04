@@ -1,4 +1,8 @@
 from .models import Profile
+from facturacion.models import Factura
+from auditoria.models import Glosa
+from django.utils import timezone
+from datetime import timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -10,7 +14,66 @@ from .decorators import role_required
 @login_required
 def profile_view(request):
     profile = Profile.objects.get(user=request.user)
-    return render(request, 'accounts/profile.html', {'profile': profile})
+    notifications = []
+    today = timezone.now().date()
+
+    if profile.role == 'AUDITOR':
+        # Alertas para facturas pendientes de auditoría (20 días)
+        auditoria_deadline = today + timedelta(days=20)
+        pending_invoices = Factura.objects.filter(
+            auditor=request.user,
+            estado_auditoria='Radicada',
+            fecha_radicacion__lte=auditoria_deadline
+        ).order_by('fecha_radicacion')
+
+        for invoice in pending_invoices:
+            days_left = (invoice.fecha_radicacion - today).days
+            if days_left <= 20:
+                notifications.append({
+                    'message': f'Tienes una factura pendiente de auditoría (No. {invoice.numero}) con fecha de radicación {invoice.fecha_radicacion.strftime('%Y-%m-%d')}. Fecha límite: {auditoria_deadline.strftime('%Y-%m-%d')}.',
+                    'url': f'/auditoria/factura/{invoice.pk}/'
+                })
+
+    if profile.role == 'ET':
+        # Alertas para facturas pendientes de auditoría (20 días) para todos los auditores
+        auditoria_deadline = today + timedelta(days=20)
+        pending_invoices_et = Factura.objects.filter(
+            estado_auditoria='Radicada',
+            fecha_radicacion__lte=auditoria_deadline
+        ).order_by('fecha_radicacion')
+
+        for invoice in pending_invoices_et:
+            days_left = (invoice.fecha_radicacion - today).days
+            if days_left <= 20:
+                notifications.append({
+                    'message': f'Factura pendiente de auditoría (No. {invoice.numero}) asignada a {invoice.auditor.username} con fecha de radicación {invoice.fecha_radicacion.strftime('%Y-%m-%d')}. Fecha límite: {auditoria_deadline.strftime('%Y-%m-%d')}.',
+                    'url': f'/auditoria/factura/{invoice.pk}/'
+                })
+
+    if profile.role == 'IPS':
+        # Alertas para glosas pendientes de respuesta (3 días)
+        response_deadline = today + timedelta(days=3)
+        pending_glosas = Glosa.objects.filter(
+            factura__ips=profile,
+            estado='Glosada',
+            fecha_glosa__lte=response_deadline
+        ).order_by('fecha_glosa')
+
+        for glosa in pending_glosas:
+            days_left = (glosa.fecha_glosa - today).days
+            if days_left <= 3:
+                notifications.append({
+                    'message': f'Tienes una glosa pendiente de respuesta para la factura No. {glosa.factura.numero} con fecha de glosa {glosa.fecha_glosa.strftime('%Y-%m-%d')}. Fecha límite: {response_deadline.strftime('%Y-%m-%d')}.',
+                    'url': f'/auditoria/responder-glosa/{glosa.pk}/'
+                })
+    
+    context = {
+        'profile': profile,
+        'notifications': notifications,
+        'notifications_count': len(notifications)
+    }
+
+    return render(request, 'accounts/profile.html', context)
 
 @login_required
 @role_required('ADMIN')
@@ -61,3 +124,7 @@ def user_update(request, pk):
         user_form = UserForm(instance=user)
         profile_form = ProfileForm(instance=profile)
     return render(request, 'accounts/user_form.html', {'user_form': user_form, 'profile_form': profile_form, 'title': 'Editar Usuario'})
+
+@login_required
+def forbidden(request):
+    return render(request, '403.html', {})

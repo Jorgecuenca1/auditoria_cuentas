@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}Listado de Resoluciones{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Listado de Resoluciones</h2>
+
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  {% endfor %}
+{% endif %}
+
+<div class="d-flex justify-content-end mb-3">
+    <a href="{% url 'facturacion:resolucion_create' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Crear Nueva Resolución</a>
+</div>
+
+{% if resoluciones %}
+<div class="table-responsive">
+  <table class="table table-bordered table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>N.º Resolución</th>
+        <th>Entidad Territorial</th>
+        <th>Fecha Creación</th>
+        <th>Firmante</th>
+        <th>Facturas Asociadas</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for resolucion in resoluciones %}
+      <tr>
+        <td>{{ resolucion.numero_resolucion }}</td>
+        <td>{{ resolucion.entidad_territorial }}</td>
+        <td>{{ resolucion.fecha_creacion|date:"Y-m-d" }}</td>
+        <td>{{ resolucion.nombre_firmante }}</td>
+        <td>
+          {% for factura in resolucion.facturas.all %}
+            <span class="badge bg-secondary">{{ factura.numero }}</span>
+          {% empty %}
+            N/A
+          {% endfor %}
+        </td>
+        <td>
+          <a href="{% url 'facturacion:resolucion_detail' resolucion.pk %}" class="btn btn-info btn-sm me-2"><i class="bi bi-eye"></i> Ver</a>
+          <a href="{% url 'facturacion:resolucion_edit' resolucion.pk %}" class="btn btn-warning btn-sm me-2"><i class="bi bi-pencil"></i> Editar</a>
+          <a href="{% url 'facturacion:resolucion_render_html' resolucion.pk %}" target="_blank" class="btn btn-secondary btn-sm"><i class="bi bi-file-earmark-pdf"></i> Ver HTML</a>
+          {# No hay opción de eliminar por simplicidad, pero se podría añadir #}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="alert alert-info" role="alert">
+  No hay resoluciones registradas aún.
+</div>
+{% endif %}
+{% endblock %} 

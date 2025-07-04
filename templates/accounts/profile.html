@@ -6,11 +6,29 @@
     <div class="card shadow">
       <div class="card-body">
         <h3 class="card-title mb-4">Perfil de Usuario</h3>
-        <ul class="list-group">
+        <ul class="list-group mb-4">
           <li class="list-group-item"><strong>Usuario:</strong> {{ profile.user.username }}</li>
           <li class="list-group-item"><strong>Rol:</strong> {{ profile.role }}</li>
           <li class="list-group-item"><strong>Entidad:</strong> {{ profile.entidad_nombre }}</li>
         </ul>
+
+        {% if notifications_count > 0 %}
+        <div class="card mb-4 bg-light border-danger">
+          <div class="card-header bg-danger text-white">Alertas Urgentes ({{ notifications_count }})</div>
+          <ul class="list-group list-group-flush">
+            {% for notification in notifications %}
+            <li class="list-group-item">
+              <a href="{{ notification.url }}" class="text-danger">{{ notification.message }}</a>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% else %}
+        <div class="alert alert-info" role="alert">
+          No hay alertas urgentes en este momento.
+        </div>
+        {% endif %}
+
       </div>
     </div>
   </div>

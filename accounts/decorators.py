@@ -24,7 +24,7 @@ def role_required(allowed_roles):
                 
             if request.user.profile.role not in allowed_roles:
                 messages.error(request, "No tiene permisos para acceder a esta página.")
-                return redirect(reverse('403'))
+                return redirect(reverse('accounts:forbidden'))
                 
             return view_func(request, *args, **kwargs)
         return _wrapped_view

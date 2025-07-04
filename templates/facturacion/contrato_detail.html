@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Detalle de Contrato{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Detalle del Contrato: {{ contrato.numero }}</h4>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Número:</dt>
+                        <dd class="col-sm-8">{{ contrato.numero }}</dd>
+
+                        <dt class="col-sm-4">Vigencia (Año):</dt>
+                        <dd class="col-sm-8">{{ contrato.vigencia|default:"N/A" }}</dd>
+
+                        <dt class="col-sm-4">Tipo de Contrato:</dt>
+                        <dd class="col-sm-8">{{ contrato.get_tipo_contrato_display|default:"N/A" }}</dd>
+
+                        <dt class="col-sm-4">Valor:</dt>
+                        <dd class="col-sm-8">${{ contrato.valor|floatformat:2|default:"N/A" }}</dd>
+
+                        <dt class="col-sm-4">Objeto:</dt>
+                        <dd class="col-sm-8">{{ contrato.objeto|default:"N/A" }}</dd>
+
+                        <dt class="col-sm-4">Fecha Inicio:</dt>
+                        <dd class="col-sm-8">{{ contrato.fecha_inicio|date:"Y-m-d"|default:"N/A" }}</dd>
+
+                        <dt class="col-sm-4">Fecha Fin:</dt>
+                        <dd class="col-sm-8">{{ contrato.fecha_fin|date:"Y-m-d"|default:"N/A" }}</dd>
+
+                        <dt class="col-sm-4">Supervisor:</dt>
+                        <dd class="col-sm-8">{{ contrato.supervisor|default:"N/A" }}</dd>
+
+                        <dt class="col-sm-4">Forma de Pago:</dt>
+                        <dd class="col-sm-8">{{ contrato.get_forma_pago_display|default:"N/A" }}</dd>
+
+                        <dt class="col-sm-4">Fecha Liquidación:</dt>
+                        <dd class="col-sm-8">{{ contrato.fecha_liquidacion|date:"Y-m-d"|default:"N/A" }}</dd>
+
+                        <dt class="col-sm-4">Fecha Conciliación:</dt>
+                        <dd class="col-sm-8">{{ contrato.fecha_conciliacion|date:"Y-m-d"|default:"N/A" }}</dd>
+
+                        <dt class="col-sm-4">Fecha Presupuesto:</dt>
+                        <dd class="col-sm-8">{{ contrato.fecha_presupuesto|date:"Y-m-d"|default:"N/A" }}</dd>
+
+                        <dt class="col-sm-4">Servicios Cubiertos:</dt>
+                        <dd class="col-sm-8">{{ contrato.servicios_cubiertos|default:"N/A" }}</dd>
+
+                        <dt class="col-sm-4">Condiciones de Pago:</dt>
+                        <dd class="col-sm-8">{{ contrato.condiciones_pago|default:"N/A" }}</dd>
+
+                        {% if contrato.tarifario_adjunto %}
+                        <dt class="col-sm-4">Tarifario Adjunto:</dt>
+                        <dd class="col-sm-8"><a href="{{ contrato.tarifario_adjunto.url }}" target="_blank">Descargar Tarifario</a></dd>
+                        {% endif %}
+
+                        {% if contrato.adjunto %}
+                        <dt class="col-sm-4">Contrato Adjunto:</dt>
+                        <dd class="col-sm-8"><a href="{{ contrato.adjunto.url }}" target="_blank">Descargar Contrato</a></dd>
+                        {% endif %}
+
+                        <dt class="col-sm-4">Alerta Vencimiento:</dt>
+                        <dd class="col-sm-8">{% if contrato.alerta_vencimiento %}Sí{% else %}No{% endif %}</dd>
+                    </dl>
+
+                    {% if contrato.ips %}
+                    <h5 class="mt-4">Información de la IPS Asociada</h5>
+                    <dl class="row">
+                        <dt class="col-sm-4">Nombre IPS:</dt>
+                        <dd class="col-sm-8">{{ contrato.ips.entidad_nombre|default:"N/A" }}</dd>
+                        <dt class="col-sm-4">NIT:</dt>
+                        <dd class="col-sm-8">{{ contrato.ips.nit|default:"N/A" }}</dd>
+                        <dt class="col-sm-4">Dirección:</dt>
+                        <dd class="col-sm-8">{{ contrato.ips.direccion|default:"N/A" }}</dd>
+                        <dt class="col-sm-4">Representante Legal:</dt>
+                        <dd class="col-sm-8">{{ contrato.ips.representante_legal|default:"N/A" }}</dd>
+                    </dl>
+                    {% endif %}
+
+                    <div class="mt-4">
+                        <a href="{% url 'facturacion:contrato_update' contrato.pk %}" class="btn btn-warning me-2"><i class="bi bi-pencil"></i> Editar Contrato</a>
+                        <a href="{% url 'facturacion:contrato_list' %}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Volver a la Lista</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

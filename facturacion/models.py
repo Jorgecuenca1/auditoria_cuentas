@@ -1,19 +1,65 @@
 from django.db import models
 from accounts.models import Profile
-from django.contrib.auth.models import User
+from django.conf import settings
+
+class Lote(models.Model):
+    ESTADOS_LOTE = (
+        ('Pendiente', 'Pendiente de Asignación'),
+        ('Asignado', 'Asignado a Auditor'),
+        ('En Auditoria', 'En Auditoría'),
+        ('Auditado', 'Auditado'),
+        ('Finalizado', 'Finalizado'),
+    )
+    nombre = models.CharField(max_length=100, unique=True, help_text="Nombre o código único para el lote")
+    auditor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name='lotes_asignados', help_text="Auditor asignado a este lote de facturas")
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    estado = models.CharField(max_length=20, choices=ESTADOS_LOTE, default='Pendiente')
+
+    def __str__(self):
+        return self.nombre
+
+    class Meta:
+        verbose_name = "Lote de Facturas"
+        verbose_name_plural = "Lotes de Facturas"
 
 class Contrato(models.Model):
     numero = models.CharField(max_length=50)
-    fecha_inicio = models.DateField()
-    fecha_fin = models.DateField()
-    tipo = models.CharField(max_length=50)
+    vigencia = models.IntegerField(blank=True, null=True, help_text="Año de vigencia del contrato")
+    TIPO_CONTRATO_CHOICES = [
+        ('Contrato', 'Con Contrato'),
+        ('Sin Contrato', 'Sin Contrato'),
+    ]
+    tipo_contrato = models.CharField(max_length=20, choices=TIPO_CONTRATO_CHOICES, blank=True, null=True)
+    valor = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True)
+    ips = models.ForeignKey(
+        'accounts.Profile',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='contratos_ips',
+        limit_choices_to={'role': 'IPS'},
+        help_text="IPS asociada a este contrato"
+    )
+    objeto = models.TextField(blank=True, null=True, help_text="Objeto o descripción del contrato")
+    fecha_inicio = models.DateField(blank=True, null=True)
+    fecha_fin = models.DateField(blank=True, null=True)
+    supervisor = models.CharField(max_length=255, blank=True, null=True, help_text="Nombre del supervisor del contrato")
+    FORMA_PAGO_CHOICES = [
+        ('10A - 30PP 60 sp', '10A - 30PP 60 sp'),
+        # Agrega más opciones si es necesario
+    ]
+    forma_pago = models.CharField(max_length=50, choices=FORMA_PAGO_CHOICES, blank=True, null=True)
+    fecha_liquidacion = models.DateField(blank=True, null=True)
+    fecha_conciliacion = models.DateField(blank=True, null=True)
+    fecha_presupuesto = models.DateField(blank=True, null=True)
     servicios_cubiertos = models.TextField(blank=True, null=True)
     tarifario_adjunto = models.FileField(upload_to='tarifarios/', blank=True, null=True, help_text="Adjunto del tarifario general asociado a este contrato")
     condiciones_pago = models.TextField(blank=True, null=True)
     adjunto = models.FileField(upload_to='contratos/', blank=True, null=True, help_text="Adjunto del contrato completo")
     alerta_vencimiento = models.BooleanField(default=False)
     def __str__(self):
-        return f"Contrato {self.numero} ({self.tipo})"
+        return f"Contrato {self.numero} ({self.tipo_contrato})"
 
 class Paciente(models.Model):
     tipo_documento = models.CharField(max_length=5)
@@ -42,14 +88,9 @@ class Factura(models.Model):
     estado_auditoria = models.CharField(max_length=20, default="Radicada")
     archivo_rips = models.FileField(upload_to='rips/')
     contrato = models.ForeignKey('Contrato', on_delete=models.SET_NULL, null=True, blank=True)
-    auditor = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='facturas_auditadas',
-        limit_choices_to={'profile__role': 'AUDITOR'}
-    )
+    lote = models.ForeignKey(Lote, on_delete=models.SET_NULL, null=True, blank=True, related_name='facturas', help_text="Lote al que pertenece esta factura")
+    auditor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name='facturas_auditadas', limit_choices_to={'profile__role': 'AUDITOR'})
     def __str__(self):
         return f"Factura {self.numero} CUFE {self.cufe}"
 
@@ -166,3 +207,32 @@ class TarifaContrato(models.Model):
 
     def __str__(self):
         return f"{self.contrato.numero} - {self.tipo_item}: {self.codigo_item} - ${self.valor_acordado}"
+
+class Resolucion(models.Model):
+    numero_resolucion = models.CharField(max_length=50, unique=True, help_text="Número único de la resolución")
+    entidad_territorial = models.CharField(max_length=255, help_text="Nombre de la Secretaría de Salud que emite la resolución")
+    fecha_creacion = models.DateField(auto_now_add=True)
+    nombre_firmante = models.CharField(max_length=255, help_text="Nombre completo del firmante de la resolución")
+    facturas = models.ManyToManyField(Factura, related_name='resoluciones', blank=True, help_text="Facturas aprobadas por esta resolución")
+    cuerpo_resolucion_html = models.TextField(blank=True, null=True, help_text="Contenido HTML generado de la resolución")
+    archivo_pdf = models.FileField(upload_to='resoluciones_pdf/', blank=True, null=True, help_text="Archivo PDF de la resolución")
+
+    def __str__(self):
+        return f"Resolución N.º {self.numero_resolucion} de {self.entidad_territorial}"
+
+    class Meta:
+        verbose_name = "Resolución"
+        verbose_name_plural = "Resoluciones"
+
+class ManualTarifario(models.Model):
+    referencia = models.CharField(max_length=50, unique=True, help_text="Referencia única del item tarifario")
+    codigo = models.CharField(max_length=50, unique=True, help_text="Código del CUPS, CUMS o servicio específico")
+    descripcion = models.TextField(help_text="Descripción detallada del item")
+    uvr = models.DecimalField(max_digits=12, decimal_places=2, help_text="Unidad de Valor Relativa (UVR)")
+
+    def __str__(self):
+        return f"{self.codigo} - {self.descripcion} ({self.uvr} UVR)"
+
+    class Meta:
+        verbose_name = "Manual Tarifario"
+        verbose_name_plural = "Manuales Tarifarios"
