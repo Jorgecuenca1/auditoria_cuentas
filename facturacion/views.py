@@ -27,7 +27,7 @@ def radicar_factura(request):
             factura = form.save(commit=False)
             factura.ips = request.user.profile
             factura.estado_auditoria = "Radicada"
-            factura.save() # Guardar la factura aquí para que tenga un ID
+            print(f"Initial factura (before patient): {factura.pk}, patient: {factura.paciente}")
 
             # Procesar el archivo RIPS
             archivo = factura.archivo_rips.open()
@@ -35,19 +35,15 @@ def radicar_factura(request):
             try:
                 data = json.load(archivo)
 
-                # Procesar sección 'usuarios' para Paciente records y validar
-                # El paciente principal de la factura se asigna con el primer usuario encontrado.
-                # Los pacientes de los ítems de servicio se manejarán individualmente.
                 factura_main_paciente = None
 
-                for user_data in data.get("usuarios", []):
+                if data.get("usuarios"):
+                    user_data = data["usuarios"][0]
                     user_validation_errors = validate_rips_user(user_data)
                     if user_validation_errors:
                         rips_errors.append(f"Errores en datos de usuario ({user_data.get('numDocumentoIdentificacion')}): {'; '.join(user_validation_errors)}")
-                        continue # Saltar a la siguiente usuario si hay errores críticos en sus datos
-
-                    # Crear o obtener el paciente principal de la factura si aún no está asignado
-                    if not factura_main_paciente:
+                    
+                    try:
                         paciente_obj, created = Paciente.objects.get_or_create(
                             tipo_documento=user_data.get("tipoDocumentoIdentificacion", ""),
                             numero_documento=user_data.get("numDocumentoIdentificacion", ""),
@@ -63,40 +59,32 @@ def radicar_factura(request):
                             }
                         )
                         factura_main_paciente = paciente_obj
-                        if not factura.paciente:
-                            factura.paciente = factura_main_paciente
+                        factura.paciente = factura_main_paciente # Assign patient here
+                        print(f"Assigned patient to factura.paciente: {factura.paciente.numero_documento}")
+                    except Exception as e:
+                        rips_errors.append(f"Error al crear o obtener paciente principal: {e}")
 
-                    # Procesar 'servicios' para Rips* items y validar
+                if not factura_main_paciente:
+                    rips_errors.append("No se encontró información de paciente principal en el archivo RIPS.")
+                
+                # Now, save the factura after patient assignment attempt
+                print(f"Factura before final save (patient): {factura.paciente}")
+                factura.save() 
+                print(f"Factura saved with patient: {factura.paciente}")
+
+                # Procesar 'servicios' para Rips* items y validar
+                for user_data in data.get("usuarios", []): 
                     servicios = user_data.get("servicios", {})
                     for service_type, items_list in servicios.items():
                         for item_data in items_list:
                             item_validation_errors = validate_rips_item(item_data, service_type)
                             if item_validation_errors:
-                                rips_errors.append(f"Errores en ítem {service_type} (consecutivo: {item_data.get('consecutivo')}, Paciente: {item_data.get('numDocumentoIdentificacion')}): {'; '.join(item_validation_errors)}")
-                                # No usamos 'continue' aquí para permitir guardar el ítem para propósitos de prueba.
+                                rips_errors.append(f"Errores en ítem {service_type} (consecutivo: {item_data.get('consecutivo')}): {'; '.join(item_validation_errors)}")
 
                             try:
-                                # Obtener o crear el paciente específico para este ítem de servicio
-                                item_paciente, created = Paciente.objects.get_or_create(
-                                    tipo_documento=item_data.get("tipoDocumentoIdentificacion", ""),
-                                    numero_documento=item_data.get("numDocumentoIdentificacion", ""),
-                                    defaults={
-                                        # Campos por defecto si es un paciente nuevo del ítem
-                                        # Puedes rellenar estos campos con lógica adicional si tu JSON lo permite
-                                        'tipo_usuario': user_data.get("tipoUsuario", ""), # Se asume el tipo de usuario del bloque principal
-                                        'fecha_nacimiento': datetime.strptime(user_data.get("fechaNacimiento", "1900-01-01"), '%Y-%m-%d').date(), # Asume fecha de nacimiento del principal
-                                        'sexo': user_data.get("codSexo", ""),
-                                        'pais_residencia': user_data.get("codPaisResidencia", ""),
-                                        'municipio_residencia': user_data.get("codMunicipioResidencia", ""),
-                                        'zona_territorial': user_data.get("codZonaTerritorialResidencia", ""),
-                                        'incapacidad': user_data.get("incapacidad", ""),
-                                        'pais_origen': user_data.get("codPaisOrigen", ""),
-                                    }
-                                )
-
                                 common_fields = {
                                     'factura': factura,
-                                    'paciente': item_paciente, # Asociar al paciente específico del ítem
+                                    'paciente': factura_main_paciente, # ALWAYS associate with the main patient
                                     'cod_prestador': item_data.get("codPrestador", ""),
                                     'num_autorizacion': item_data.get("numAutorizacion", ""),
                                     'vr_servicio': item_data.get("vrServicio", 0) if item_data.get("vrServicio") is not None else 0,
@@ -172,9 +160,8 @@ def radicar_factura(request):
                                 # Aquí se podrían añadir más tipos de RIPS (urgencias, recién nacidos, etc.)
 
                             except Exception as e:
-                                rips_errors.append(f"Error interno al guardar ítem de RIPS (tipo: {service_type}, consecutivo: {item_data.get('consecutivo')}, Paciente: {item_data.get('numDocumentoIdentificacion')}): {e}")
+                                rips_errors.append(f"Error interno al guardar ítem de RIPS (tipo: {service_type}, consecutivo: {item_data.get('consecutivo')}): {e}")
                                 # Considerar registrar el error en un log para depuración
-                                # No usamos 'continue' aquí para permitir guardar el ítem para propósitos de prueba.
 
                 if rips_errors: # Si hay errores de validación, mostrar advertencias pero permitir guardar
                     for error_msg in rips_errors:

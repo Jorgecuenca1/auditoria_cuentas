@@ -12,15 +12,48 @@
   {% endfor %}
 {% endif %}
 
-<div class="mb-3">
-  <strong>Identificaciones únicas de Pacientes en esta Factura:</strong>
-  <ul class="mb-2 list-inline">
-    {% for id in identificaciones %}
-      <li class="list-inline-item badge bg-info text-dark">{{ id }}</li>
-    {% empty %}
-      <li class="list-inline-item">No se encontraron identificaciones de pacientes.</li>
-    {% endfor %}
-  </ul>
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0">Información del Paciente</h5>
+    </div>
+    <div class="card-body">
+        {% if factura.paciente %}
+        <dl class="row">
+            <dt class="col-sm-4">Tipo Documento:</dt>
+            <dd class="col-sm-8">{{ factura.paciente.tipo_documento|default:"N/A" }}</dd>
+
+            <dt class="col-sm-4">Número Documento:</dt>
+            <dd class="col-sm-8">{{ factura.paciente.numero_documento|default:"N/A" }}</dd>
+
+            <dt class="col-sm-4">Tipo Usuario:</dt>
+            <dd class="col-sm-8">{{ factura.paciente.tipo_usuario|default:"N/A" }}</dd>
+
+            <dt class="col-sm-4">Fecha Nacimiento:</dt>
+            <dd class="col-sm-8">{{ factura.paciente.fecha_nacimiento|date:"Y-m-d"|default:"N/A" }}</dd>
+
+            <dt class="col-sm-4">Sexo:</dt>
+            <dd class="col-sm-8">{{ factura.paciente.sexo|default:"N/A" }}</dd>
+
+            <dt class="col-sm-4">País Residencia:</dt>
+            <dd class="col-sm-8">{{ factura.paciente.pais_residencia|default:"N/A" }}</dd>
+
+            <dt class="col-sm-4">Municipio Residencia:</dt>
+            <dd class="col-sm-8">{{ factura.paciente.municipio_residencia|default:"N/A" }}</dd>
+
+            <dt class="col-sm-4">Zona Territorial:</dt>
+            <dd class="col-sm-8">{{ factura.paciente.zona_territorial|default:"N/A" }}</dd>
+
+            <dt class="col-sm-4">Incapacidad:</dt>
+            <dd class="col-sm-8">{{ factura.paciente.incapacidad|default:"N/A" }}</dd>
+
+            <dt class="col-sm-4">País Origen:</dt>
+            <dd class="col-sm-8">{{ factura.paciente.pais_origen|default:"N/A" }}</dd>
+
+        </dl>
+        {% else %}
+        <p class="text-muted">No hay información de paciente asociada a esta factura.</p>
+        {% endif %}
+    </div>
 </div>
 
 <h3 class="mt-5 mb-3">Detalle de RIPS</h3>

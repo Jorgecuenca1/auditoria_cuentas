@@ -26,6 +26,7 @@
           <th>Fecha Radicación</th>
           <th>Estado</th>
           <th>Auditor</th>
+          <th>Tipo Auditoría</th>
           <th>Acción</th>
         </tr>
       </thead>
@@ -43,7 +44,7 @@
           {# Columna Auditor #}
           <td>
             {% if user.profile.role == 'ET' %}
-              <form method="post" class="d-flex align-items-center">
+              <form method="post" class="d-flex align-items-center mb-2">
                 {% csrf_token %}
                 <input type="hidden" name="factura_id" value="{{ factura.id }}">
                 <select name="auditor_id" class="form-select form-select-sm me-2">
@@ -62,11 +63,37 @@
             {% endif %}
           </td>
 
+          {# Columna Tipo Auditoría #}
+          <td>
+            {% if user.profile.role == 'ET' or user.profile.role == 'AUDITOR' %}
+              <form method="post" class="d-flex align-items-center">
+                {% csrf_token %}
+                <input type="hidden" name="factura_id" value="{{ factura.id }}">
+                <select name="tipo_auditoria" class="form-select form-select-sm me-2">
+                  <option value="">— seleccionar —</option>
+                  {% for key, value in tipo_auditoria_choices %}
+                    <option value="{{ key }}"
+                      {% if factura.tipo_auditoria == key %}selected{% endif %}>
+                      {{ value }}
+                    </option>
+                  {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Guardar</button>
+              </form>
+            {% else %}
+              {{ factura.get_tipo_auditoria_display|default:"—" }}
+            {% endif %}
+          </td>
+
           {# Columna Acción #}
           <td>
             {% if user.profile.role == 'AUDITOR' %}
               <a href="{% url 'auditoria:auditar_factura' factura.id %}"
-                 class="btn btn-primary btn-sm">Auditar</a>
+                 class="btn btn-primary btn-sm mb-1">Auditar</a>
+            {% endif %}
+            {% if user.profile.role == 'ET' or user.profile.role == 'AUDITOR' %}
+              <a href="{% url 'auditoria:reporte_auditoria_detalle' factura.id %}"
+                 class="btn btn-info btn-sm">Reporte</a>
             {% else %}
               —
             {% endif %}
@@ -74,7 +101,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="9" class="text-center">No hay facturas radicadas.</td>
+          <td colspan="10" class="text-center">No hay facturas radicadas.</td>
         </tr>
         {% endfor %}
       </tbody>

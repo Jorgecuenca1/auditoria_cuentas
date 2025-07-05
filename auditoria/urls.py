@@ -17,6 +17,8 @@ urlpatterns = [
     path('reportes/auditorias/', views.reporte_auditorias, name='reporte_auditorias'),
     path('reportes/glosas-por-paciente/', views.reporte_glosas_por_paciente, name='reporte_glosas_por_paciente'),
     path('reportes/glosas-por-tipo-item/', views.reporte_glosas_por_tipo_item, name='reporte_glosas_por_tipo_item'),
+    path('reportes/auditoria-detalle/<int:factura_id>/', views.reporte_auditoria_detalle, name='reporte_auditoria_detalle'),
+    path('reportes/auditoria-lote/', views.reporte_auditoria_lote, name='reporte_auditoria_lote'),
 
     # API endpoints
     path('api/', include('auditoria.api_urls')),

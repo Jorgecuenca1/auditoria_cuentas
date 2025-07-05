@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% block title %}Reporte de Auditoría por Lote{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Reporte de Auditoría por Lote</h2>
+        <button class="btn btn-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir Reporte</button>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Seleccionar Lotes para Reporte</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" class="mb-4">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="lotes" class="form-label">Selecciona uno o más lotes:</label>
+                    <select class="form-select" id="lotes" name="lotes" multiple size="5" aria-label="Selección de Lotes">
+                        {% for lote in lotes %}
+                            <option value="{{ lote.id }}" {% if lote.id in selected_lotes_ids %}selected{% endif %}>{{ lote.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Usa Ctrl/Cmd + clic para seleccionar múltiples lotes.</div>
+                </div>
+                <button type="submit" class="btn btn-primary">Generar Reporte por Lote</button>
+            </form>
+        </div>
+    </div>
+
+    {% if facturas_en_lotes %}
+        <h3>Facturas en los lotes seleccionados:</h3>
+        {% for factura in facturas_en_lotes %}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Factura #{{ factura.numero }} (Lote: {{ factura.lote.nombre|default:"N/A" }})</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-4">CUFE:</dt>
+                    <dd class="col-sm-8">{{ factura.cufe }}</dd>
+
+                    <dt class="col-sm-4">IPS:</dt>
+                    <dd class="col-sm-8">{{ factura.ips.entidad_nombre|default:"N/A" }}</dd>
+
+                    <dt class="col-sm-4">EPS:</dt>
+                    <dd class="col-sm-8">{{ factura.eps.entidad_nombre|default:"N/A" }}</dd>
+
+                    <dt class="col-sm-4">Valor Bruto:</dt>
+                    <dd class="col-sm-8">${{ factura.valor_bruto|floatformat:2 }}</dd>
+
+                    <dt class="col-sm-4">Fecha Radicación:</dt>
+                    <dd class="col-sm-8">{{ factura.fecha_radicacion|date:"Y-m-d" }}</dd>
+
+                    <dt class="col-sm-4">Estado de Auditoría:</dt>
+                    <dd class="col-sm-8">{{ factura.estado_auditoria }}</dd>
+
+                    <dt class="col-sm-4">Auditor Asignado:</dt>
+                    <dd class="col-sm-8">{{ factura.auditor.get_full_name|default:factura.auditor.username|default:"N/A" }}</dd>
+
+                    <dt class="col-sm-4">Tipo de Auditoría:</dt>
+                    <dd class="col-sm-8">{{ factura.get_tipo_auditoria_display|default:"N/A" }}</dd>
+                </dl>
+
+                <h6 class="mt-4">Información del Paciente</h6>
+                {% if factura.paciente %}
+                <dl class="row">
+                    <dt class="col-sm-4">Tipo Documento:</dt>
+                    <dd class="col-sm-8">{{ factura.paciente.tipo_documento|default:"N/A" }}</dd>
+                    <dt class="col-sm-4">Número Documento:</dt>
+                    <dd class="col-sm-8">{{ factura.paciente.numero_documento|default:"N/A" }}</dd>
+                    <dt class="col-sm-4">Fecha Nacimiento:</dt>
+                    <dd class="col-sm-8">{{ factura.paciente.fecha_nacimiento|date:"Y-m-d"|default:"N/A" }}</dd>
+                    <dt class="col-sm-4">Sexo:</dt>
+                    <dd class="col-sm-8">{{ factura.paciente.sexo|default:"N/A" }}</dd>
+                </dl>
+                {% else %}
+                <p class="text-muted">No hay información de paciente asociada a esta factura.</p>
+                {% endif %}
+
+                <h6 class="mt-4">Glosas de esta Factura</h6>
+                {% if factura.glosa_set.all %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fecha Glosa</th>
+                                <th>Tipo Glosa</th>
+                                <th>Subtipo Glosa</th>
+                                <th>Descripción Glosa</th>
+                                <th>Valor Glosado</th>
+                                <th>Estado</th>
+                                <th>Fecha Respuesta</th>
+                                <th>Descripción Respuesta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for glosa in factura.glosa_set.all %}
+                            <tr>
+                                <td>{{ glosa.fecha_glosa|date:"Y-m-d" }}</td>
+                                <td>{{ glosa.tipo_glosa.nombre|default:"N/A" }}</td>
+                                <td>{{ glosa.subtipo_glosa.nombre|default:"N/A" }}</td>
+                                <td>{{ glosa.descripcion|default:"N/A" }}</td>
+                                <td>${{ glosa.valor_glosado|floatformat:2 }}</td>
+                                <td>{{ glosa.estado|default:"N/A" }}</td>
+                                <td>{{ glosa.fecha_respuesta|date:"Y-m-d"|default:"N/A" }}</td>
+                                <td>{{ glosa.descripcion_respuesta|default:"N/A" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No hay glosas registradas para esta factura en el lote seleccionado.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        {% if request.method == 'POST' %}
+            <p class="text-muted">No se encontraron facturas en los lotes seleccionados.</p>
+        {% endif %}
+    {% endif %}
+
+    <div class="mt-4 text-center no-print">
+        <a href="{% url 'auditoria:lista_radicados' %}" class="btn btn-info"><i class="bi bi-list-ul"></i> Volver a Facturas Radicadas</a>
+    </div>
+
+</div>
+{% endblock %} 

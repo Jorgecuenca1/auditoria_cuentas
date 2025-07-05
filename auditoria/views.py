@@ -134,16 +134,30 @@ from django.shortcuts import get_object_or_404
 @login_required
 @role_required(['ET', 'AUDITOR'])
 def lista_radicados(request):
-    # Proceso de asignación por parte de la ET
-    if request.method == 'POST' and request.user.profile.role == 'ET':
-        factura_id = request.POST.get('factura_id')
-        auditor_id = request.POST.get('auditor_id')
-        factura = get_object_or_404(Factura, pk=factura_id)
-        auditor = get_object_or_404(User, pk=auditor_id, profile__role='AUDITOR')
-        factura.auditor = auditor
-        factura.save()
-        messages.success(request, f'Auditor "{auditor.get_full_name() or auditor.username}" asignado a la factura {factura.numero}.')
-        return redirect('auditoria:lista_radicados')
+    if request.method == 'POST':
+        if request.user.profile.role == 'ET':
+            factura_id = request.POST.get('factura_id')
+            auditor_id = request.POST.get('auditor_id')
+            tipo_auditoria = request.POST.get('tipo_auditoria')
+            factura = get_object_or_404(Factura, pk=factura_id)
+            if auditor_id:
+                auditor = get_object_or_404(User, pk=auditor_id, profile__role='AUDITOR')
+                factura.auditor = auditor
+                messages.success(request, f'Auditor "{auditor.get_full_name() or auditor.username}" asignado a la factura {factura.numero}.')
+            if tipo_auditoria:
+                factura.tipo_auditoria = tipo_auditoria
+                messages.success(request, f'Tipo de auditoría actualizado a "{factura.get_tipo_auditoria_display()}" para la factura {factura.numero}.')
+            factura.save()
+            return redirect('auditoria:lista_radicados')
+        elif request.user.profile.role == 'AUDITOR':
+            factura_id = request.POST.get('factura_id')
+            tipo_auditoria = request.POST.get('tipo_auditoria')
+            factura = get_object_or_404(Factura, pk=factura_id)
+            if tipo_auditoria:
+                factura.tipo_auditoria = tipo_auditoria
+                factura.save()
+                messages.success(request, f'Tipo de auditoría actualizado a "{factura.get_tipo_auditoria_display()}" para la factura {factura.numero}.')
+            return redirect('auditoria:lista_radicados')
 
     # Filtrado según rol
     if request.user.profile.role == 'AUDITOR':
@@ -157,7 +171,9 @@ def lista_radicados(request):
     return render(request, 'auditoria/lista_radicados.html', {
         'facturas': facturas,
         'auditores': auditores,
+        'tipo_auditoria_choices': Factura.TIPO_AUDITORIA_CHOICES,
     })
+
 from functools import wraps
 from django.shortcuts import redirect
 
@@ -177,6 +193,7 @@ def role_required(*allowed_roles):
             return view_fn(request, *args, **kwargs)
         return _wrapped
     return decorator
+
 @login_required
 @role_required('ET','AUDITOR')
 def auditar_factura(request, factura_id):
@@ -240,7 +257,7 @@ def auditar_factura(request, factura_id):
             messages.success(request, "Glosa creada exitosamente.")
             return redirect('auditoria:auditar_factura', factura_id=factura.id)
     
-    glosas = Glosa.objects.filter(factura=factura)
+    glosas = Glosa.objects.filter(factura=factura).select_related('tipo_glosa', 'subtipo_glosa', 'subcodigo_glosa', 'tipo_glosa_respuesta', 'subtipo_glosa_respuesta')
     return render(request, 'auditoria/auditar_factura.html', {
         'factura': factura,
         'consultas': consultas,
@@ -252,6 +269,65 @@ def auditar_factura(request, factura_id):
         'identificaciones': identificaciones,
         'tipos_glosa': tipos_glosa,
     })
+
+@login_required
+@role_required('ET', 'AUDITOR')
+def reporte_auditoria_detalle(request, factura_id):
+    factura = get_object_or_404(Factura.objects.select_related('paciente', 'ips', 'eps', 'auditor__profile'), id=factura_id)
+    glosas = Glosa.objects.filter(factura=factura).select_related(
+        'tipo_glosa', 'subtipo_glosa', 'subcodigo_glosa',
+        'tipo_glosa_respuesta', 'subtipo_glosa_respuesta'
+    ).order_by('fecha_glosa')
+
+    rips_consultas = RipsConsulta.objects.filter(factura=factura)
+    rips_medicamentos = RipsMedicamento.objects.filter(factura=factura)
+    rips_procedimientos = RipsProcedimiento.objects.filter(factura=factura)
+    rips_hospitalizaciones = RipsHospitalizacion.objects.filter(factura=factura)
+    rips_otros_servicios = RipsOtroServicio.objects.filter(factura=factura)
+
+    context = {
+        'factura': factura,
+        'paciente': factura.paciente,
+        'glosas': glosas,
+        'rips_consultas': rips_consultas,
+        'rips_medicamentos': rips_medicamentos,
+        'rips_procedimientos': rips_procedimientos,
+        'rips_hospitalizaciones': rips_hospitalizaciones,
+        'rips_otros_servicios': rips_otros_servicios,
+    }
+
+    return render(request, 'auditoria/reportes/reporte_auditoria_detalle.html', context)
+
+@login_required
+@role_required('ET')
+def reporte_auditoria_lote(request):
+    from facturacion.models import Lote # Import Lote model here
+
+    lotes = Lote.objects.all().order_by('nombre')
+    facturas_en_lotes = []
+    selected_lotes_ids = []
+
+    if request.method == 'POST':
+        selected_lotes_ids = request.POST.getlist('lotes')
+        if selected_lotes_ids:
+            facturas_en_lotes = Factura.objects.filter(lote__id__in=selected_lotes_ids).select_related(
+                'paciente', 'ips', 'eps', 'auditor__profile', 'lote'
+            ).prefetch_related(
+                'glosa_set__tipo_glosa', 
+                'glosa_set__subtipo_glosa', 
+                'glosa_set__subcodigo_glosa',
+                'glosa_set__tipo_glosa_respuesta',
+                'glosa_set__subtipo_glosa_respuesta'
+            ).order_by('numero')
+        else:
+            messages.warning(request, "Por favor, selecciona al menos un lote para generar el reporte.")
+
+    context = {
+        'lotes': lotes,
+        'facturas_en_lotes': facturas_en_lotes,
+        'selected_lotes_ids': [int(x) for x in selected_lotes_ids], # Convert to int for template comparison
+    }
+    return render(request, 'auditoria/reportes/reporte_auditoria_lote.html', context)
 
 @login_required
 @role_required(['IPS', 'EPS'])

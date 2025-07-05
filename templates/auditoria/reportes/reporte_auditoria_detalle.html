@@ -1,0 +1,325 @@
+{% extends 'base.html' %}
+{% block title %}Reporte de Auditoría - Factura {{ factura.numero }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Reporte de Auditoría - Factura #{{ factura.numero }}</h2>
+        <button class="btn btn-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir Reporte</button>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Detalles de la Factura</h5>
+        </div>
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-4">Número de Factura:</dt>
+                <dd class="col-sm-8">{{ factura.numero }}</dd>
+
+                <dt class="col-sm-4">CUFE:</dt>
+                <dd class="col-sm-8">{{ factura.cufe }}</dd>
+
+                <dt class="col-sm-4">IPS:</dt>
+                <dd class="col-sm-8">{{ factura.ips.entidad_nombre|default:"N/A" }}</dd>
+
+                <dt class="col-sm-4">EPS:</dt>
+                <dd class="col-sm-8">{{ factura.eps.entidad_nombre|default:"N/A" }}</dd>
+
+                <dt class="col-sm-4">Valor Bruto:</dt>
+                <dd class="col-sm-8">${{ factura.valor_bruto|floatformat:2 }}</dd>
+
+                <dt class="col-sm-4">Fecha Radicación:</dt>
+                <dd class="col-sm-8">{{ factura.fecha_radicacion|date:"Y-m-d" }}</dd>
+
+                <dt class="col-sm-4">Estado de Auditoría:</dt>
+                <dd class="col-sm-8">{{ factura.estado_auditoria }}</dd>
+
+                <dt class="col-sm-4">Auditor Asignado:</dt>
+                <dd class="col-sm-8">{{ factura.auditor.get_full_name|default:factura.auditor.username|default:"N/A" }}</dd>
+
+                <dt class="col-sm-4">Tipo de Auditoría:</dt>
+                <dd class="col-sm-8">{{ factura.get_tipo_auditoria_display|default:"N/A" }}</dd>
+            </dl>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Información del Paciente</h5>
+        </div>
+        <div class="card-body">
+            {% if paciente %}
+            <dl class="row mb-0">
+                <dt class="col-sm-4">Tipo Documento:</dt>
+                <dd class="col-sm-8">{{ paciente.tipo_documento|default:"N/A" }}</dd>
+
+                <dt class="col-sm-4">Número Documento:</dt>
+                <dd class="col-sm-8">{{ paciente.numero_documento|default:"N/A" }}</dd>
+
+                <dt class="col-sm-4">Tipo Usuario:</dt>
+                <dd class="col-sm-8">{{ paciente.tipo_usuario|default:"N/A" }}</dd>
+
+                <dt class="col-sm-4">Fecha Nacimiento:</dt>
+                <dd class="col-sm-8">{{ paciente.fecha_nacimiento|date:"Y-m-d"|default:"N/A" }}</dd>
+
+                <dt class="col-sm-4">Sexo:</dt>
+                <dd class="col-sm-8">{{ paciente.sexo|default:"N/A" }}</dd>
+
+                <dt class="col-sm-4">País Residencia:</dt>
+                <dd class="col-sm-8">{{ paciente.pais_residencia|default:"N/A" }}</dd>
+
+                <dt class="col-sm-4">Municipio Residencia:</dt>
+                <dd class="col-sm-8">{{ paciente.municipio_residencia|default:"N/A" }}</dd>
+
+                <dt class="col-sm-4">Zona Territorial:</dt>
+                <dd class="col-sm-8">{{ paciente.zona_territorial|default:"N/A" }}</dd>
+
+                <dt class="col-sm-4">Incapacidad:</dt>
+                <dd class="col-sm-8">{{ paciente.incapacidad|default:"N/A" }}</dd>
+
+                <dt class="col-sm-4">País Origen:</dt>
+                <dd class="col-sm-8">{{ paciente.pais_origen|default:"N/A" }}</dd>
+            </dl>
+            {% else %}
+            <p class="text-muted">No hay información de paciente asociada a esta factura.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">Glosas y Respuestas</h5>
+        </div>
+        <div class="card-body">
+            {% if glosas %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha Glosa</th>
+                            <th>Tipo Glosa</th>
+                            <th>Subtipo Glosa</th>
+                            <th>Subcódigo Glosa</th>
+                            <th>Descripción Glosa</th>
+                            <th>Valor Glosado</th>
+                            <th>Estado</th>
+                            <th>Fecha Respuesta</th>
+                            <th>Tipo Respuesta</th>
+                            <th>Subtipo Respuesta</th>
+                            <th>Descripción Respuesta</th>
+                            <th>Soporte Respuesta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for glosa in glosas %}
+                        <tr>
+                            <td>{{ glosa.fecha_glosa|date:"Y-m-d" }}</td>
+                            <td>{{ glosa.tipo_glosa.nombre|default:"N/A" }}</td>
+                            <td>{{ glosa.subtipo_glosa.nombre|default:"N/A" }}</td>
+                            <td>{{ glosa.subcodigo_glosa.nombre|default:"N/A" }}</td>
+                            <td>{{ glosa.descripcion|default:"N/A" }}</td>
+                            <td>${{ glosa.valor_glosado|floatformat:2 }}</td>
+                            <td>{{ glosa.estado|default:"N/A" }}</td>
+                            <td>{{ glosa.fecha_respuesta|date:"Y-m-d"|default:"N/A" }}</td>
+                            <td>{{ glosa.tipo_glosa_respuesta.nombre|default:"N/A" }}</td>
+                            <td>{{ glosa.subtipo_glosa_respuesta.nombre|default:"N/A" }}</td>
+                            <td>{{ glosa.descripcion_respuesta|default:"N/A" }}</td>
+                            <td>
+                                {% if glosa.archivo_soporte_respuesta %}
+                                <a href="{{ glosa.archivo_soporte_respuesta.url }}" target="_blank">Ver Soporte</a>
+                                {% else %}
+                                N/A
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No hay glosas registradas para esta factura.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">Ítems RIPS Asociados</h5>
+        </div>
+        <div class="card-body">
+            {# Consultas #}
+            {% if rips_consultas %}
+            <h6>Consultas</h6>
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Consecutivo</th>
+                            <th>Fecha Inicio</th>
+                            <th>Cód. Consulta</th>
+                            <th>Diagnóstico Ppal.</th>
+                            <th>Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in rips_consultas %}
+                        <tr>
+                            <td>{{ item.consecutivo }}</td>
+                            <td>{{ item.fecha_inicio_atencion|date:"Y-m-d H:i" }}</td>
+                            <td>{{ item.cod_consulta }}</td>
+                            <td>{{ item.cod_diagnostico_principal }}</td>
+                            <td>${{ item.vr_servicio|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No hay consultas RIPS.</p>
+            {% endif %}
+
+            {# Medicamentos #}
+            {% if rips_medicamentos %}
+            <h6>Medicamentos</h6>
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Consecutivo</th>
+                            <th>Fecha Dispensación</th>
+                            <th>Cód. Tecnología</th>
+                            <th>Nombre Tecnología</th>
+                            <th>Cantidad</th>
+                            <th>Valor Unit.</th>
+                            <th>Valor Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in rips_medicamentos %}
+                        <tr>
+                            <td>{{ item.consecutivo }}</td>
+                            <td>{{ item.fecha_dispensacion|date:"Y-m-d H:i" }}</td>
+                            <td>{{ item.cod_tecnologia_salud }}</td>
+                            <td>{{ item.nom_tecnologia_salud }}</td>
+                            <td>{{ item.cantidad_medicamento }} {{ item.unidad_medida }}</td>
+                            <td>${{ item.vr_unit_medicamento|floatformat:2 }}</td>
+                            <td>${{ item.vr_servicio|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No hay medicamentos RIPS.</p>
+            {% endif %}
+
+            {# Procedimientos #}
+            {% if rips_procedimientos %}
+            <h6>Procedimientos</h6>
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Consecutivo</th>
+                            <th>Fecha Inicio</th>
+                            <th>Cód. Procedimiento</th>
+                            <th>Diagnóstico Ppal.</th>
+                            <th>Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in rips_procedimientos %}
+                        <tr>
+                            <td>{{ item.consecutivo }}</td>
+                            <td>{{ item.fecha_inicio_atencion|date:"Y-m-d H:i" }}</td>
+                            <td>{{ item.cod_procedimiento }}</td>
+                            <td>{{ item.cod_diagnostico_principal }}</td>
+                            <td>${{ item.vr_servicio|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No hay procedimientos RIPS.</p>
+            {% endif %}
+
+            {# Hospitalización #}
+            {% if rips_hospitalizaciones %}
+            <h6>Hospitalización</h6>
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Consecutivo</th>
+                            <th>F. Ingreso</th>
+                            <th>F. Egreso</th>
+                            <th>Diagnóstico Ppal.</th>
+                            <th>Valor (Est.)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in rips_hospitalizaciones %}
+                        <tr>
+                            <td>{{ item.consecutivo }}</td>
+                            <td>{{ item.fecha_inicio_atencion|date:"Y-m-d H:i" }}</td>
+                            <td>{{ item.fecha_egreso|date:"Y-m-d H:i" }}</td>
+                            <td>{{ item.cod_diagnostico_principal }}</td>
+                            <td>${{ item.vr_servicio|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No hay hospitalizaciones RIPS.</p>
+            {% endif %}
+
+            {# Otros Servicios #}
+            {% if rips_otros_servicios %}
+            <h6>Otros Servicios</h6>
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Consecutivo</th>
+                            <th>Fecha Suministro</th>
+                            <th>Tipo OS</th>
+                            <th>Cód. Tecnología</th>
+                            <th>Nombre Tecnología</th>
+                            <th>Cantidad</th>
+                            <th>Valor Unit.</th>
+                            <th>Valor Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in rips_otros_servicios %}
+                        <tr>
+                            <td>{{ item.consecutivo }}</td>
+                            <td>{{ item.fecha_suministro|date:"Y-m-d H:i" }}</td>
+                            <td>{{ item.tipo_os }}</td>
+                            <td>{{ item.cod_tecnologia_salud }}</td>
+                            <td>{{ item.nom_tecnologia_salud }}</td>
+                            <td>{{ item.cantidad_os }}</td>
+                            <td>${{ item.vr_unit_os|floatformat:2 }}</td>
+                            <td>${{ item.vr_servicio|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No hay otros servicios RIPS.</p>
+            {% endif %}
+
+        </div>
+    </div>
+    
+    <div class="mt-4 text-center no-print">
+        <a href="{% url 'auditoria:auditar_factura' factura.pk %}" class="btn btn-secondary me-2"><i class="bi bi-arrow-left"></i> Volver a Auditoría</a>
+        <a href="{% url 'auditoria:lista_radicados' %}" class="btn btn-info"><i class="bi bi-list-ul"></i> Ver todas las Facturas</a>
+    </div>
+
+</div>
+{% endblock %} 

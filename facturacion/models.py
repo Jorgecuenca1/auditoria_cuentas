@@ -77,6 +77,13 @@ class Paciente(models.Model):
         return f"{self.tipo_documento} {self.numero_documento}"
 
 class Factura(models.Model):
+    TIPO_AUDITORIA_CHOICES = [
+        ('Acuerdo', 'Acuerdo'),
+        ('Contrato', 'Contrato'),
+        ('Ambulatorio', 'Ambulatorio'),
+        ('Hospitalizacion', 'Hospitalización'),
+        ('Urgencias', 'Urgencias'),
+    ]
     numero = models.CharField(max_length=50)
     cufe = models.CharField(max_length=150)
     fecha_emision = models.DateField()
@@ -91,6 +98,7 @@ class Factura(models.Model):
     lote = models.ForeignKey(Lote, on_delete=models.SET_NULL, null=True, blank=True, related_name='facturas', help_text="Lote al que pertenece esta factura")
     auditor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                 related_name='facturas_auditadas', limit_choices_to={'profile__role': 'AUDITOR'})
+    tipo_auditoria = models.CharField(max_length=20, choices=TIPO_AUDITORIA_CHOICES, null=True, blank=True, help_text="Tipo de auditoría para la factura")
     def __str__(self):
         return f"Factura {self.numero} CUFE {self.cufe}"
 
