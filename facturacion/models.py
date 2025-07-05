@@ -77,6 +77,12 @@ class Paciente(models.Model):
         return f"{self.tipo_documento} {self.numero_documento}"
 
 class Factura(models.Model):
+    ESTADO_CHOICES = [
+        ('Radicada', 'Radicada'),
+        ('Devuelta', 'Devuelta'),
+        ('En Auditoria', 'En Auditoría'),
+        ('Auditada', 'Auditada'),
+    ]
     TIPO_AUDITORIA_CHOICES = [
         ('Acuerdo', 'Acuerdo'),
         ('Contrato', 'Contrato'),
@@ -92,7 +98,7 @@ class Factura(models.Model):
     eps = models.ForeignKey(Profile, on_delete=models.PROTECT, related_name='facturas_eps')
     paciente = models.ForeignKey(Paciente, on_delete=models.PROTECT, null=True, blank=True)
     valor_bruto = models.DecimalField(max_digits=12, decimal_places=2)
-    estado_auditoria = models.CharField(max_length=20, default="Radicada")
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default="Radicada")
     archivo_rips = models.FileField(upload_to='rips/')
     contrato = models.ForeignKey('Contrato', on_delete=models.SET_NULL, null=True, blank=True)
     lote = models.ForeignKey(Lote, on_delete=models.SET_NULL, null=True, blank=True, related_name='facturas', help_text="Lote al que pertenece esta factura")
@@ -101,6 +107,55 @@ class Factura(models.Model):
     tipo_auditoria = models.CharField(max_length=20, choices=TIPO_AUDITORIA_CHOICES, null=True, blank=True, help_text="Tipo de auditoría para la factura")
     def __str__(self):
         return f"Factura {self.numero} CUFE {self.cufe}"
+
+class UsuariosNoAptos(models.Model):
+    cedula = models.CharField(max_length=20, unique=True, help_text="Número de cédula del usuario no apto")
+    nombre = models.CharField(max_length=255, help_text="Nombre completo del usuario no apto")
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.nombre} ({self.cedula})"
+
+    class Meta:
+        verbose_name = "Usuario No Apto"
+        verbose_name_plural = "Usuarios No Aptos"
+
+class CodigoDevolucion(models.Model):
+    codigo = models.CharField(max_length=10, unique=True)
+    descripcion = models.TextField()
+
+    def __str__(self):
+        return f"{self.codigo} - {self.descripcion[:50]}"
+
+    class Meta:
+        verbose_name = "Código de Devolución"
+        verbose_name_plural = "Códigos de Devolución"
+
+class SubcodigoDevolucion(models.Model):
+    codigo_padre = models.ForeignKey(CodigoDevolucion, on_delete=models.CASCADE, related_name='subcodigos')
+    subcodigo = models.CharField(max_length=10, unique=True)
+    descripcion = models.TextField()
+
+    def __str__(self):
+        return f"{self.subcodigo} - {self.descripcion[:50]}"
+
+    class Meta:
+        verbose_name = "Subcódigo de Devolución"
+        verbose_name_plural = "Subcódigos de Devolución"
+
+class Devolucion(models.Model):
+    factura = models.OneToOneField(Factura, on_delete=models.CASCADE, related_name='devolucion')
+    subcodigo = models.ForeignKey(SubcodigoDevolucion, on_delete=models.PROTECT)
+    fecha_devolucion = models.DateTimeField(auto_now_add=True)
+    justificacion = models.TextField(blank=True, null=True, help_text="Justificación adicional para la devolución.")
+    devuelto_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, help_text="Usuario que registró la devolución (para devoluciones manuales)")
+
+    def __str__(self):
+        return f"Devolución de Factura {self.factura.numero} - Motivo: {self.subcodigo.subcodigo}"
+
+    class Meta:
+        verbose_name = "Devolución"
+        verbose_name_plural = "Devoluciones"
 
 class RipsConsulta(models.Model):
     factura = models.ForeignKey(Factura, on_delete=models.CASCADE)

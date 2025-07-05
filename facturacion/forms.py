@@ -8,10 +8,10 @@ User = get_user_model()
 
 class LoteForm(forms.ModelForm):
     facturas = forms.ModelMultipleChoiceField(
-        queryset=Factura.objects.filter(lote__isnull=True, estado_auditoria='Radicada', auditor__isnull=True).order_by('ips__entidad_nombre'),
+        queryset=Factura.objects.filter(lote__isnull=True, estado='Radicada', auditor__isnull=True).order_by('ips__entidad_nombre'),
         widget=forms.CheckboxSelectMultiple,
         required=True,
-        label="Facturas para incluir en el lote (solo se muestran facturas 'Radicadas' sin lote y sin auditor asignado)"
+        label="Facturas para Incluir en el Lote"
     )
 
     class Meta:
@@ -127,10 +127,10 @@ class TarifaContratoForm(forms.ModelForm):
 
 class ResolucionForm(forms.ModelForm):
     facturas = forms.ModelMultipleChoiceField(
-        queryset=Factura.objects.filter(estado_auditoria__in=['Finalizada', 'Auditada']),
+        queryset=Factura.objects.filter(estado='Auditada'),
         widget=forms.CheckboxSelectMultiple,
         required=True,
-        label="Facturas a incluir en la Resolución (solo facturas Finalizadas o Auditadas)"
+        label="Facturas a incluir en la Resolución (solo facturas Auditadas)"
     )
 
     class Meta:
@@ -151,3 +151,10 @@ class ResolucionForm(forms.ModelForm):
         # si esto es un requisito para las resoluciones.
         
         return facturas
+
+class AgregarFacturasResolucionForm(forms.Form):
+    facturas_disponibles = forms.ModelMultipleChoiceField(
+        queryset=Factura.objects.filter(estado='Auditada'),
+        widget=forms.CheckboxSelectMultiple,
+        label="Seleccione las facturas para agregar a la resolución"
+    )

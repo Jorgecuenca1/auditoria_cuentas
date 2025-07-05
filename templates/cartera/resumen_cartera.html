@@ -5,16 +5,17 @@
 <div class="table-responsive">
   <table class="table table-bordered table-hover align-middle">
     <thead class="table-light">
-      <tr><th>Factura</th><th>IPS</th><th>EPS</th><th>Valor Bruto</th><th>Estado Auditoría</th></tr>
+      <tr><th>Factura</th><th>IPS</th><th>EPS</th><th>Valor Bruto</th><th>Fecha Radicación</th><th>Estado</th></tr>
     </thead>
     <tbody>
     {% for factura in facturas %}
       <tr>
         <td>{{ factura.numero }}</td>
-        <td>{{ factura.ips }}</td>
+        <td>{{ factura.ips.entidad_nombre }}</td>
         <td>{{ factura.eps }}</td>
         <td>${{ factura.valor_bruto|floatformat:2 }}</td>
-        <td>{{ factura.estado_auditoria }}</td>
+        <td>{{ factura.fecha_radicacion }}</td>
+        <td>{{ factura.get_estado_display }}</td>
       </tr>
     {% endfor %}
     </tbody>

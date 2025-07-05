@@ -76,7 +76,7 @@
                     <tbody>
                         {% for estado in cartera_por_estado %}
                         <tr>
-                            <td>{{ estado.estado_auditoria }}</td>
+                            <td>{{ estado.estado }}</td>
                             <td>{{ estado.total_facturas }}</td>
                             <td>${{ estado.valor_total|floatformat:2 }}</td>
                         </tr>

@@ -33,16 +33,42 @@
                 <dd class="col-sm-8">{{ factura.fecha_radicacion|date:"Y-m-d" }}</dd>
 
                 <dt class="col-sm-4">Estado de Auditoría:</dt>
-                <dd class="col-sm-8">{{ factura.estado_auditoria }}</dd>
+                <dd class="col-sm-8">{{ factura.get_estado_display }}</dd>
 
                 <dt class="col-sm-4">Auditor Asignado:</dt>
-                <dd class="col-sm-8">{{ factura.auditor.get_full_name|default:factura.auditor.username|default:"N/A" }}</dd>
+                <dd class="col-sm-8">{% if factura.auditor %}{{ factura.auditor.get_full_name|default:factura.auditor.username }}{% else %}N/A{% endif %}</dd>
 
                 <dt class="col-sm-4">Tipo de Auditoría:</dt>
                 <dd class="col-sm-8">{{ factura.get_tipo_auditoria_display|default:"N/A" }}</dd>
             </dl>
         </div>
     </div>
+
+    {% if factura.estado == 'Devuelta' and factura.devolucion %}
+    <div class="card shadow-sm mb-4 border-danger">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="bi bi-arrow-return-left"></i> Información de la Devolución</h5>
+        </div>
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-4">Fecha Devolución:</dt>
+                <dd class="col-sm-8">{{ factura.devolucion.fecha_devolucion|date:"Y-m-d H:i" }}</dd>
+
+                <dt class="col-sm-4">Código General:</dt>
+                <dd class="col-sm-8">{{ factura.devolucion.subcodigo.codigo_padre.codigo }} - {{ factura.devolucion.subcodigo.codigo_padre.descripcion }}</dd>
+
+                <dt class="col-sm-4">Código Específico:</dt>
+                <dd class="col-sm-8">{{ factura.devolucion.subcodigo.subcodigo }} - {{ factura.devolucion.subcodigo.descripcion }}</dd>
+                
+                <dt class="col-sm-4">Justificación Adicional:</dt>
+                <dd class="col-sm-8">{{ factura.devolucion.justificacion|default:"No se proporcionó justificación adicional." }}</dd>
+
+                <dt class="col-sm-4">Devuelto Por:</dt>
+                <dd class="col-sm-8">{% if factura.devolucion and factura.devolucion.devuelto_por %}{{ factura.devolucion.devuelto_por.get_full_name|default:factura.devolucion.devuelto_por.username }}{% else %}Sistema (Automático){% endif %}</dd>
+            </dl>
+        </div>
+    </div>
+    {% endif %}
 
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-info text-white">

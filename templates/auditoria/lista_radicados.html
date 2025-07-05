@@ -2,14 +2,14 @@
 {% block title %}Facturas Radicadas{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid mt-4">
   <h2 class="mb-4">Facturas Radicadas para Auditar</h2>
 
   {% if messages %}
     {% for message in messages %}
-      <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
         {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
     {% endfor %}
   {% endif %}
@@ -20,88 +20,131 @@
         <tr>
           <th>Número</th>
           <th>CUFE</th>
-          <th>IPS</th>
-          <th>EPS</th>
+          <th scope="col" class="sortable" data-sort="ips__entidad_nombre">IPS {% if current_sort == 'ips__entidad_nombre' %}<i class="bi bi-arrow-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}</th>
+          <th>Lote</th>
           <th>Valor Bruto</th>
-          <th>Fecha Radicación</th>
-          <th>Estado</th>
-          <th>Auditor</th>
+          <th scope="col" class="sortable" data-sort="fecha_radicacion">Fecha Radicación {% if current_sort == 'fecha_radicacion' %}<i class="bi bi-arrow-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}</th>
+          <th scope="col">Paciente(s)</th>
+          <th scope="col" class="sortable" data-sort="estado">Estado {% if current_sort == 'estado' %}<i class="bi bi-arrow-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}</th>
           <th>Tipo Auditoría</th>
-          <th>Acción</th>
+          <th>Auditor Asignado</th>
+          <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
-        {% for factura in facturas %}
+        {% for item in facturas_con_forms %}
         <tr>
-          <td>{{ factura.numero }}</td>
-          <td>{{ factura.cufe }}</td>
-          <td>{{ factura.ips.entidad_nombre }}</td>
-          <td>{{ factura.eps.entidad_nombre }}</td>
-          <td>${{ factura.valor_bruto|floatformat:2 }}</td>
-          <td>{{ factura.fecha_radicacion }}</td>
-          <td>{{ factura.estado_auditoria }}</td>
-
-          {# Columna Auditor #}
+          <td>{{ item.factura.numero }}</td>
+          <td>{{ item.factura.cufe|default:"N/A" }}</td>
+          <td>{{ item.factura.ips.entidad_nombre|default:"N/A" }}</td>
+          <td>{{ item.factura.lote.numero_lote|default:"N/A" }}</td>
+          <td>${{ item.factura.valor_bruto|floatformat:2 }}</td>
+          <td>{{ item.factura.fecha_radicacion|date:"Y-m-d" }}</td>
+          <td>
+            {% if item.factura.paciente %}
+              {{ item.factura.paciente.numero_documento }}
+            {% else %}
+              N/A
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge 
+              {% if item.factura.estado == 'Radicada' %}bg-primary
+              {% elif item.factura.estado == 'En Auditoria' %}bg-warning text-dark
+              {% elif item.factura.estado == 'Auditada' %}bg-success
+              {% elif item.factura.estado == 'Devuelta' %}bg-danger
+              {% else %}bg-secondary{% endif %}">
+              {{ item.factura.get_estado_display }}
+            </span>
+          </td>
+          <td>
+             {% if user.profile.role == 'ET' %}
+            <form method="post" action="{% url 'auditoria:lista_radicados' %}" class="form-tipo-auditoria d-flex align-items-center gap-2">
+              {% csrf_token %}
+              <input type="hidden" name="factura_id" value="{{ item.factura.id }}">
+              {{ item.tipo_auditoria_form.tipo_auditoria }}
+              <button type="submit" name="guardar_tipo_auditoria" class="btn btn-sm btn-outline-primary">Guardar</button>
+            </form>
+            {% else %}
+              {{ item.factura.get_tipo_auditoria_display|default:"No asignado" }}
+            {% endif %}
+          </td>
           <td>
             {% if user.profile.role == 'ET' %}
-              <form method="post" class="d-flex align-items-center mb-2">
+            <form method="post" action="{% url 'auditoria:lista_radicados' %}" class="form-asignar-auditor d-flex align-items-center gap-2">
                 {% csrf_token %}
-                <input type="hidden" name="factura_id" value="{{ factura.id }}">
-                <select name="auditor_id" class="form-select form-select-sm me-2">
-                  <option value="">— asignar —</option>
-                  {% for aud in auditores %}
-                    <option value="{{ aud.id }}"
-                      {% if factura.auditor and factura.auditor.id == aud.id %}selected{% endif %}>
-                      {{ aud.get_full_name|default:aud.username }}
+              <input type="hidden" name="factura_id" value="{{ item.factura.id }}">
+              <select name="auditor_id" class="form-select form-select-sm">
+                <option value="">-- Asignar --</option>
+                {% for auditor in auditores %}
+                <option value="{{ auditor.id }}" {% if item.factura.auditor.id == auditor.id %}selected{% endif %}>
+                  {{ auditor.get_full_name|default:auditor.username }}
                     </option>
                   {% endfor %}
                 </select>
-                <button type="submit" class="btn btn-sm btn-outline-secondary">Guardar</button>
+              <button type="submit" name="asignar_auditor" class="btn btn-sm btn-outline-secondary">Asignar</button>
               </form>
             {% else %}
-              {{ factura.auditor.get_full_name|default:factura.auditor.username|default:"—" }}
+            {{ item.factura.auditor.get_full_name|default:item.factura.auditor.username|default:"Sin Asignar" }}
             {% endif %}
           </td>
-
-          {# Columna Tipo Auditoría #}
           <td>
-            {% if user.profile.role == 'ET' or user.profile.role == 'AUDITOR' %}
-              <form method="post" class="d-flex align-items-center">
-                {% csrf_token %}
-                <input type="hidden" name="factura_id" value="{{ factura.id }}">
-                <select name="tipo_auditoria" class="form-select form-select-sm me-2">
-                  <option value="">— seleccionar —</option>
-                  {% for key, value in tipo_auditoria_choices %}
-                    <option value="{{ key }}"
-                      {% if factura.tipo_auditoria == key %}selected{% endif %}>
-                      {{ value }}
-                    </option>
-                  {% endfor %}
-                </select>
-                <button type="submit" class="btn btn-sm btn-outline-secondary">Guardar</button>
-              </form>
-            {% else %}
-              {{ factura.get_tipo_auditoria_display|default:"—" }}
-            {% endif %}
-          </td>
-
-          {# Columna Acción #}
-          <td>
-            {% if user.profile.role == 'AUDITOR' %}
-              <a href="{% url 'auditoria:auditar_factura' factura.id %}"
-                 class="btn btn-primary btn-sm mb-1">Auditar</a>
+            <div class="d-flex flex-column gap-1">
+            {% if user.profile.role == 'AUDITOR' and item.factura.auditor == user %}
+              <a href="{% url 'auditoria:auditar_factura' item.factura.id %}"
+                 class="btn btn-primary btn-sm">Auditar</a>
             {% endif %}
             {% if user.profile.role == 'ET' or user.profile.role == 'AUDITOR' %}
-              <a href="{% url 'auditoria:reporte_auditoria_detalle' factura.id %}"
+              <a href="{% url 'auditoria:reporte_auditoria_detalle' item.factura.id %}"
                  class="btn btn-info btn-sm">Reporte</a>
-            {% else %}
-              —
             {% endif %}
+            {% if user.profile.role == 'ET' %}
+
+            {% endif %}
+            </div>
           </td>
         </tr>
+
+        <!-- Modal para Devolución -->
+        <div class="modal fade" id="devolucionModal-{{ item.factura.id }}" tabindex="-1" aria-labelledby="devolucionModalLabel-{{ item.factura.id }}" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="devolucionModalLabel-{{ item.factura.id }}">Devolver Factura: {{ item.factura.numero }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form action="{% url 'auditoria:devolver_factura_manual' item.factura.id %}" method="post">
+                        {% csrf_token %}
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="subcodigo_devolucion-{{ item.factura.id }}" class="form-label">Motivo de Devolución</label>
+                                <select name="subcodigo_devolucion" id="subcodigo_devolucion-{{ item.factura.id }}" class="form-select" required>
+                                    <option value="">-- Seleccione un motivo --</option>
+                                    {% for codigo in codigos_devolucion %}
+                                        <optgroup label="{{ codigo.codigo }} - {{ codigo.descripcion }}">
+                                            {% for subcodigo in codigo.subcodigos.all %}
+                                                <option value="{{ subcodigo.pk }}">{{ subcodigo.subcodigo }} - {{ subcodigo.descripcion }}</option>
+                                            {% endfor %}
+                                        </optgroup>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="justificacion-{{ item.factura.id }}" class="form-label">Justificación Adicional (Opcional)</label>
+                                <textarea name="justificacion" id="justificacion-{{ item.factura.id }}" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-danger">Confirmar Devolución</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
         {% empty %}
         <tr>
-          <td colspan="10" class="text-center">No hay facturas radicadas.</td>
+          <td colspan="11" class="text-center">No hay facturas radicadas.</td>
         </tr>
         {% endfor %}
       </tbody>

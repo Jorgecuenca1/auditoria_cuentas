@@ -69,17 +69,17 @@
                                 <th>Número Factura</th>
                                 <th>Fecha Radicación</th>
                                 <th>Valor Bruto</th>
-                                <th>Estado Auditoría</th>
+                                <th>Estado</th>
                                 <th>Auditor</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for factura in facturas %}
                             <tr>
-                                <td>{{ factura.numero }}</td>
-                                <td>{{ factura.fecha_radicacion|date:"Y-m-d" }}</td>
+                                <td><a href="{% url 'auditoria:auditar_factura' factura.pk %}">{{ factura.numero }}</a></td>
+                                <td>{{ factura.fecha_radicacion }}</td>
                                 <td>${{ factura.valor_bruto|floatformat:2 }}</td>
-                                <td>{{ factura.estado_auditoria }}</td>
+                                <td>{{ factura.get_estado_display }}</td>
                                 <td>
                                     {% if factura.auditor %}
                                         {{ factura.auditor.username }}

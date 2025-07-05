@@ -10,6 +10,8 @@ urlpatterns = [
     path('factura/<int:factura_id>/glosas/', views.lista_glosas, name='lista_glosas'),
     path('glosa/<int:glosa_id>/responder/', views.responder_glosa, name='responder_glosa'),
     path('glosas-pendientes/', views.glosas_pendientes, name='glosas_pendientes'),
+    path('devoluciones/', views.lista_devoluciones, name='lista_devoluciones'),
+    path('factura/<int:factura_id>/devolver/', views.devolver_factura_manual, name='devolver_factura_manual'),
 
     # URLs para Reportes
     path('reportes/glosas/', views.reporte_glosas, name='reporte_glosas'),

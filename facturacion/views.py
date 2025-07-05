@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from .models import Factura, Paciente, Contrato, RipsConsulta, RipsMedicamento, RipsProcedimiento, RipsHospitalizacion, RipsOtroServicio, TarifaContrato, Lote, Resolucion, ManualTarifario
+from .models import Factura, Paciente, Contrato, RipsConsulta, RipsMedicamento, RipsProcedimiento, RipsHospitalizacion, RipsOtroServicio, TarifaContrato, Lote, Resolucion, ManualTarifario, UsuariosNoAptos, SubcodigoDevolucion, Devolucion
 from .forms import FacturaForm, RipsUploadForm, ContratoForm, TarifaContratoForm, LoteForm, AsignarAuditorLoteForm, ResolucionForm
 from accounts.models import Profile, CatalogoCUPS, CatalogoCIE10, CatalogoCUMS, CatalogoMunicipio, CatalogoPais
 from .validators import validate_rips_item, validate_rips_user
@@ -8,6 +8,7 @@ import json
 from datetime import datetime, date
 from django.contrib.auth.decorators import login_required
 from django.template.loader import render_to_string # Importar para renderizar HTML
+from django.core.paginator import Paginator
 
 def parse_date_time(dt_str):
     if not dt_str:
@@ -26,7 +27,7 @@ def radicar_factura(request):
         if form.is_valid():
             factura = form.save(commit=False)
             factura.ips = request.user.profile
-            factura.estado_auditoria = "Radicada"
+            factura.estado = "Radicada"
             print(f"Initial factura (before patient): {factura.pk}, patient: {factura.paciente}")
 
             # Procesar el archivo RIPS
@@ -42,7 +43,7 @@ def radicar_factura(request):
                     user_validation_errors = validate_rips_user(user_data)
                     if user_validation_errors:
                         rips_errors.append(f"Errores en datos de usuario ({user_data.get('numDocumentoIdentificacion')}): {'; '.join(user_validation_errors)}")
-                    
+
                     try:
                         paciente_obj, created = Paciente.objects.get_or_create(
                             tipo_documento=user_data.get("tipoDocumentoIdentificacion", ""),
@@ -59,6 +60,28 @@ def radicar_factura(request):
                             }
                         )
                         factura_main_paciente = paciente_obj
+                        
+                        # <<< INICIO DE LA LÓGICA DE DEVOLUCIÓN >>>
+                        # Verificar si el usuario está en la lista de no aptos AQUI
+                        if UsuariosNoAptos.objects.filter(cedula=paciente_obj.numero_documento).exists():
+                            # Crear la factura con estado 'Devuelta'
+                            factura.estado = 'Devuelta'
+                            factura.paciente = paciente_obj # Asignar paciente antes de guardar
+                            factura.save() # Guardar la factura primero para tener un ID
+
+                            # Crear el registro de devolución
+                            subcodigo_devolucion = SubcodigoDevolucion.objects.get(subcodigo='DE1601')
+                            Devolucion.objects.create(
+                                factura=factura,
+                                subcodigo=subcodigo_devolucion,
+                                justificacion='Devolución automática: El usuario se encuentra en la lista de no aptos.',
+                                # devuelto_por es null para devoluciones automaticas
+                            )
+                            
+                            messages.warning(request, f"La factura {factura.numero} ha sido marcada como devuelta porque el paciente se encuentra en la lista de no aptos.")
+                            return redirect('facturacion:radicar_factura')
+                        # <<< FIN DE LA LÓGICA DE DEVOLUCIÓN >>>
+
                         factura.paciente = factura_main_paciente # Assign patient here
                         print(f"Assigned patient to factura.paciente: {factura.paciente.numero_documento}")
                     except Exception as e:
@@ -72,7 +95,7 @@ def radicar_factura(request):
                 factura.save() 
                 print(f"Factura saved with patient: {factura.paciente}")
 
-                # Procesar 'servicios' para Rips* items y validar
+                    # Procesar 'servicios' para Rips* items y validar
                 for user_data in data.get("usuarios", []): 
                     servicios = user_data.get("servicios", {})
                     for service_type, items_list in servicios.items():
@@ -285,7 +308,7 @@ def lote_create(request):
             facturas = form.cleaned_data['facturas']
             for factura in facturas:
                 factura.lote = lote
-                factura.estado_auditoria = 'En Lote'
+                factura.estado = 'En Auditoria'
                 factura.save()
 
             messages.success(request, f"Lote '{lote.nombre}' creado exitosamente con {facturas.count()} facturas.")
@@ -297,7 +320,7 @@ def lote_create(request):
         # Obtener facturas disponibles y agruparlas por IPS
         facturas_disponibles = Factura.objects.filter(
             lote__isnull=True,
-            estado_auditoria='Radicada',
+            estado='Radicada',
             auditor__isnull=True
         ).select_related('ips').order_by('ips__entidad_nombre', 'numero')
 
@@ -331,7 +354,7 @@ def lote_detail(request, pk):
             facturas_del_lote = lote.facturas.all()
             for factura in facturas_del_lote:
                 factura.auditor = auditor_asignado
-                factura.estado_auditoria = 'Asignada'
+                factura.estado = 'En Auditoria'
                 factura.save()
             
             messages.success(request, f"Auditor '{auditor_asignado}' asignado al lote '{lote.nombre}' y a sus {facturas_del_lote.count()} facturas.")
@@ -371,7 +394,7 @@ def resolucion_create(request):
             
             # Actualizar el estado de las facturas a 'Aprobada' y setear la relación con la resolución
             for factura in resolucion.facturas.all():
-                factura.estado_auditoria = 'Aprobada'
+                factura.estado = 'Auditada'
                 factura.save()
 
             # Recargar facturas para la renderización del HTML con el ID de la resolución
@@ -424,7 +447,7 @@ def resolucion_edit(request, pk):
 
             # Actualizar el estado de las facturas a 'Aprobada'
             for factura in resolucion.facturas.all():
-                factura.estado_auditoria = 'Aprobada'
+                factura.estado = 'Auditada'
                 factura.save()
             
             # Recargar facturas para la renderización del HTML con el ID de la resolución

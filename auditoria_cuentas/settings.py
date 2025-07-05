@@ -66,7 +66,8 @@ CORS_ALLOWED_ORIGINS = [
 
 CSRF_TRUSTED_ORIGINS = [
     "https://corpofuturo.org",
-    "https://cuentasmedicas.corpofuturo.org"
+    "https://cuentasmedicas.corpofuturo.org",
+    "http://127.0.0.1:8000"
 ]
 
 TEMPLATES = [

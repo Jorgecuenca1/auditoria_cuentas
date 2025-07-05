@@ -1,6 +1,7 @@
 ### forms.py
 from django import forms
-from .models import Glosa, SubtipoGlosa, SubCodigoGlosa, GlosaRespuestaIPS
+from .models import Glosa, SubtipoGlosa, SubCodigoGlosa
+from facturacion.models import Factura
 
 class GlosaForm(forms.ModelForm):
     class Meta:
@@ -30,14 +31,10 @@ class GlosaForm(forms.ModelForm):
         elif self.instance.pk:
             self.fields['subcodigo_glosa'].queryset = self.instance.subtipo_glosa.subcodigos
 
-class IPSRespuestaForm(forms.ModelForm):
+class TipoAuditoriaForm(forms.ModelForm):
     class Meta:
-        model = GlosaRespuestaIPS
-        fields = ['tipo_respuesta', 'subtipo_respuesta', 'descripcion_respuesta_ips', 'documento_respuesta_ips']
+        model = Factura
+        fields = ['tipo_auditoria']
         widgets = {
-            'descripcion_respuesta_ips': forms.Textarea(attrs={'rows':4,'class':'form-control'}),
+            'tipo_auditoria': forms.Select(attrs={'class': 'form-select form-select-sm', 'label': ''})
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['subtipo_respuesta'].queryset = self.instance.tipo_respuesta.sub_tipos_respuesta.all() if self.instance.pk else SubtipoGlosa.objects.none()

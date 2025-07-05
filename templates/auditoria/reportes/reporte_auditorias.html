@@ -44,10 +44,15 @@
                     <tbody>
                         {% for auditoria in auditorias_por_ips %}
                         <tr>
-                            <td>{{ auditoria.ips }}</td>
+                            <td>{{ auditoria.ips__entidad_nombre }}</td>
                             <td>
-                                <span class="badge {% if auditoria.estado_auditoria == 'Finalizada' %}bg-success{% else %}bg-warning{% endif %}">
-                                    {{ auditoria.estado_auditoria }}
+                                <span class="badge 
+                                    {% if auditoria.estado == 'Auditada' %}bg-success
+                                    {% elif auditoria.estado == 'Devuelta' %}bg-danger
+                                    {% elif auditoria.estado == 'En Auditoria' %}bg-warning text-dark
+                                    {% elif auditoria.estado == 'Radicada' %}bg-primary
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ auditoria.estado }}
                                 </span>
                             </td>
                             <td>{{ auditoria.total }}</td>

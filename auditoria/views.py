@@ -1,7 +1,8 @@
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect, get_object_or_404
-from facturacion.models import Factura, Paciente, RipsConsulta, RipsMedicamento, RipsProcedimiento, RipsHospitalizacion, RipsOtroServicio
+from facturacion.models import Factura, Paciente, RipsConsulta, RipsMedicamento, RipsProcedimiento, RipsHospitalizacion, RipsOtroServicio, Devolucion, CodigoDevolucion, SubcodigoDevolucion
 from .models import Glosa, TipoGlosa, SubtipoGlosa, SubCodigoGlosa, TipoGlosaRespuestaIPS, SubtipoGlosaRespuestaIPS
+from .forms import TipoAuditoriaForm
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.contrib import messages
@@ -51,11 +52,11 @@ def reporte_cartera(request):
 
     # Cartera por estado de auditoría
     cartera_por_estado = facturas.values(
-        'estado_auditoria'
+        'estado'
     ).annotate(
         total_facturas=Count('id'),
         valor_total=Sum('valor_bruto')
-    ).order_by('estado_auditoria')
+    ).order_by('estado')
 
     return render(request, 'auditoria/reportes/reporte_cartera.html', {
         'total_facturas': total_facturas,
@@ -69,17 +70,17 @@ def reporte_cartera(request):
 def reporte_auditorias(request):
     # Estadísticas de auditorías
     facturas = Factura.objects.all()
-    total_auditadas = facturas.filter(estado_auditoria='Finalizada').count()
-    total_pendientes = facturas.exclude(estado_auditoria='Finalizada').count()
+    total_auditadas = facturas.filter(estado='Auditada').count()
+    total_pendientes = facturas.exclude(estado='Auditada').count()
     
     # Auditorías por IPS
     auditorias_por_ips = facturas.values(
         'ips__entidad_nombre',
-        'estado_auditoria'
+        'estado'
     ).annotate(
         total=Count('id'),
         valor_total=Sum('valor_bruto')
-    ).order_by('ips__entidad_nombre', 'estado_auditoria')
+    ).order_by('ips__entidad_nombre', 'estado')
 
     return render(request, 'auditoria/reportes/reporte_auditorias.html', {
         'total_auditadas': total_auditadas,
@@ -134,45 +135,73 @@ from django.shortcuts import get_object_or_404
 @login_required
 @role_required(['ET', 'AUDITOR'])
 def lista_radicados(request):
+    sort_by = request.GET.get('sort', 'fecha_radicacion')
+    order = request.GET.get('order', 'desc')
+    order_by_string = f"{'-' if order == 'desc' else ''}{sort_by}"
+
+    facturas_base_query = Factura.objects.select_related('ips', 'lote', 'auditor', 'paciente')
+    
+    if request.user.profile.role == 'AUDITOR':
+        facturas_list = facturas_base_query.filter(auditor=request.user).order_by(order_by_string)
+    else:
+        facturas_list = facturas_base_query.all().order_by(order_by_string)
+
     if request.method == 'POST':
-        if request.user.profile.role == 'ET':
-            factura_id = request.POST.get('factura_id')
+        factura_id = request.POST.get('factura_id')
+        factura = get_object_or_404(Factura, pk=factura_id)
+
+        # Manejar asignación de auditor
+        if 'asignar_auditor' in request.POST:
             auditor_id = request.POST.get('auditor_id')
-            tipo_auditoria = request.POST.get('tipo_auditoria')
-            factura = get_object_or_404(Factura, pk=factura_id)
             if auditor_id:
                 auditor = get_object_or_404(User, pk=auditor_id, profile__role='AUDITOR')
                 factura.auditor = auditor
-                messages.success(request, f'Auditor "{auditor.get_full_name() or auditor.username}" asignado a la factura {factura.numero}.')
-            if tipo_auditoria:
-                factura.tipo_auditoria = tipo_auditoria
-                messages.success(request, f'Tipo de auditoría actualizado a "{factura.get_tipo_auditoria_display()}" para la factura {factura.numero}.')
-            factura.save()
-            return redirect('auditoria:lista_radicados')
-        elif request.user.profile.role == 'AUDITOR':
-            factura_id = request.POST.get('factura_id')
-            tipo_auditoria = request.POST.get('tipo_auditoria')
-            factura = get_object_or_404(Factura, pk=factura_id)
-            if tipo_auditoria:
-                factura.tipo_auditoria = tipo_auditoria
                 factura.save()
-                messages.success(request, f'Tipo de auditoría actualizado a "{factura.get_tipo_auditoria_display()}" para la factura {factura.numero}.')
-            return redirect('auditoria:lista_radicados')
+                messages.success(request, f'Auditor "{auditor.get_full_name() or auditor.username}" asignado a la factura {factura.numero}.')
+            else: # Des-asignar
+                factura.auditor = None
+                factura.save()
+                messages.info(request, f'Se ha quitado el auditor de la factura {factura.numero}.')
+            return redirect(request.META.get('HTTP_REFERER', 'auditoria:lista_radicados'))
 
-    # Filtrado según rol
-    if request.user.profile.role == 'AUDITOR':
-        facturas = Factura.objects.filter(auditor=request.user)
-    else:  # ET
-        facturas = Factura.objects.all()
+        # Manejar actualización de tipo de auditoría
+        if 'guardar_tipo_auditoria' in request.POST:
+            form = TipoAuditoriaForm(request.POST, instance=factura, prefix=f'tipo_auditoria_{factura_id}')
+            if form.is_valid():
+                form.save()
+                messages.success(request, f"Se actualizó el tipo de auditoría para la factura {factura.numero}.")
+            else:
+                messages.error(request, f"Hubo un error al actualizar el tipo de auditoría: {form.errors.as_text()}")
+            return redirect(request.META.get('HTTP_REFERER', 'auditoria:lista_radicados'))
 
-    # Solo los usuarios con role AUDITOR para poblar el <select>
+
+    # Preparar datos combinados para la plantilla
+    facturas_con_forms = []
+    for factura in facturas_list:
+        facturas_con_forms.append({
+            'factura': factura,
+            'tipo_auditoria_form': TipoAuditoriaForm(instance=factura, prefix=f'tipo_auditoria_{factura.id}'),
+        })
+
+    # Contadores para la UI
+    total_facturas = facturas_list.count()
+    total_auditadas = facturas_list.filter(estado='Auditada').count()
+    total_pendientes = facturas_list.exclude(estado='Auditada').count()
+
     auditores = User.objects.filter(profile__role='AUDITOR')
+    codigos_devolucion = CodigoDevolucion.objects.prefetch_related('subcodigos').all()
 
-    return render(request, 'auditoria/lista_radicados.html', {
-        'facturas': facturas,
+    context = {
+        'facturas_con_forms': facturas_con_forms,
         'auditores': auditores,
-        'tipo_auditoria_choices': Factura.TIPO_AUDITORIA_CHOICES,
-    })
+        'codigos_devolucion': codigos_devolucion,
+        'total_facturas': total_facturas,
+        'total_auditadas': total_auditadas,
+        'total_pendientes': total_pendientes,
+        'current_sort': sort_by,
+        'current_order': order,
+    }
+    return render(request, 'auditoria/lista_radicados.html', context)
 
 from functools import wraps
 from django.shortcuts import redirect
@@ -213,7 +242,7 @@ def auditar_factura(request, factura_id):
             if glosas_pendientes:
                 messages.error(request, "No se puede finalizar la auditoría mientras haya glosas pendientes por responder.")
             else:
-                factura.estado_auditoria = 'Finalizada'
+                factura.estado = 'Auditada'
                 factura.save()
                 messages.success(request, "Auditoría finalizada exitosamente.")
                 return redirect('auditoria:lista_radicados')
@@ -273,7 +302,12 @@ def auditar_factura(request, factura_id):
 @login_required
 @role_required('ET', 'AUDITOR')
 def reporte_auditoria_detalle(request, factura_id):
-    factura = get_object_or_404(Factura.objects.select_related('paciente', 'ips', 'eps', 'auditor__profile'), id=factura_id)
+    factura = get_object_or_404(
+        Factura.objects.select_related(
+            'paciente', 'ips', 'eps', 'auditor__profile', 'devolucion__subcodigo__codigo_padre'
+        ), 
+        id=factura_id
+    )
     glosas = Glosa.objects.filter(factura=factura).select_related(
         'tipo_glosa', 'subtipo_glosa', 'subcodigo_glosa',
         'tipo_glosa_respuesta', 'subtipo_glosa_respuesta'
@@ -387,3 +421,55 @@ def glosas_pendientes(request):
     
     glosas = glosas.order_by('-fecha_glosa')
     return render(request, 'auditoria/glosas_pendientes.html', {'glosas': glosas})
+
+@login_required
+@role_required(['ET', 'AUDITOR'])
+def lista_devoluciones(request):
+    devoluciones = Devolucion.objects.select_related(
+        'factura', 
+        'factura__ips', 
+        'subcodigo', 
+        'subcodigo__codigo_padre',
+        'devuelto_por'
+    ).all()
+
+    context = {
+        'devoluciones': devoluciones,
+        'title': 'Facturas Devueltas'
+    }
+    return render(request, 'auditoria/lista_devoluciones.html', context)
+
+@login_required
+@role_required(['ET', 'AUDITOR'])
+def devolver_factura_manual(request, factura_id):
+    print(f"DEBUG: devolver_factura_manual entered. User authenticated: {request.user.is_authenticated}")
+    if request.user.is_authenticated and hasattr(request.user, 'profile'):
+        print(f"DEBUG: User profile role: {request.user.profile.role}")
+    else:
+        print("DEBUG: User not authenticated or profile not found.")
+
+    if request.method == 'POST':
+        factura = get_object_or_404(Factura, pk=factura_id)
+        subcodigo_id = request.POST.get('subcodigo_devolucion')
+        justificacion = request.POST.get('justificacion', '')
+
+        if not subcodigo_id:
+            messages.error(request, "Debe seleccionar un motivo de devolución.")
+            return redirect('auditoria:lista_radicados')
+
+        # Cambiar estado de la factura
+        factura.estado = 'Devuelta'
+        factura.save()
+
+        # Crear el registro de devolución
+        subcodigo_devolucion = get_object_or_404(SubcodigoDevolucion, pk=subcodigo_id)
+        Devolucion.objects.create(
+            factura=factura,
+            subcodigo=subcodigo_devolucion,
+            justificacion=justificacion,
+            devuelto_por=request.user
+        )
+
+        messages.success(request, f"La factura {factura.numero} ha sido devuelta exitosamente.")
+    
+    return redirect('auditoria:lista_radicados')

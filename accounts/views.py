@@ -1,15 +1,18 @@
-from .models import Profile
-from facturacion.models import Factura
-from auditoria.models import Glosa
-from django.utils import timezone
-from datetime import timedelta
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
 from django.contrib.auth.models import User
 from django.db import transaction
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from datetime import timedelta
+from django.db.models import Count
+from django.http import JsonResponse
+
+from .models import Profile
 from .forms import UserForm, ProfileForm
 from .decorators import role_required
+from facturacion.models import Factura, Lote, Contrato
+from auditoria.models import Glosa
 
 @login_required
 def profile_view(request):
@@ -22,7 +25,7 @@ def profile_view(request):
         auditoria_deadline = today + timedelta(days=20)
         pending_invoices = Factura.objects.filter(
             auditor=request.user,
-            estado_auditoria='Radicada',
+            estado='Radicada',
             fecha_radicacion__lte=auditoria_deadline
         ).order_by('fecha_radicacion')
 
@@ -38,7 +41,7 @@ def profile_view(request):
         # Alertas para facturas pendientes de auditoría (20 días) para todos los auditores
         auditoria_deadline = today + timedelta(days=20)
         pending_invoices_et = Factura.objects.filter(
-            estado_auditoria='Radicada',
+            estado='Radicada',
             fecha_radicacion__lte=auditoria_deadline
         ).order_by('fecha_radicacion')
 
@@ -128,3 +131,17 @@ def user_update(request, pk):
 @login_required
 def forbidden(request):
     return render(request, '403.html', {})
+
+@login_required
+def dashboard_counts(request):
+    counts = {
+        'contratos': Contrato.objects.count(),
+        'lotes': Lote.objects.count(),
+        'facturas_radicadas': Factura.objects.filter(estado='Radicada').count(),
+        'glosas_pendientes': Glosa.objects.filter(estado='Pendiente').count(),
+        'usuarios': User.objects.count(),
+        'perfiles_ips': Profile.objects.filter(role='IPS').count(),
+        'total_facturas': Factura.objects.count(),
+        'facturas_por_estado': list(Factura.objects.values('estado').annotate(count=Count('id'))),
+    }
+    return JsonResponse(counts)

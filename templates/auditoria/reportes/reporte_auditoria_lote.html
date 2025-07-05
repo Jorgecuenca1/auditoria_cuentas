@@ -63,7 +63,7 @@
                     <dd class="col-sm-8">{{ factura.fecha_radicacion|date:"Y-m-d" }}</dd>
 
                     <dt class="col-sm-4">Estado de Auditoría:</dt>
-                    <dd class="col-sm-8">{{ factura.estado_auditoria }}</dd>
+                    <dd class="col-sm-8">{{ factura.get_estado_display }}</dd>
 
                     <dt class="col-sm-4">Auditor Asignado:</dt>
                     <dd class="col-sm-8">{{ factura.auditor.get_full_name|default:factura.auditor.username|default:"N/A" }}</dd>

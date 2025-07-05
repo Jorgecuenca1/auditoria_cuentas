@@ -14,6 +14,10 @@ def role_required(allowed_roles):
     def decorator(view_func):
         @wraps(view_func)
         def _wrapped_view(request, *args, **kwargs):
+            print(f"DEBUG (Decorator): User authenticated: {request.user.is_authenticated}, Has profile: {hasattr(request.user, 'profile')}")
+            if request.user.is_authenticated:
+                print(f"DEBUG (Decorator): User ID: {request.user.id}, Username: {request.user.username}")
+            
             if not request.user.is_authenticated:
                 messages.error(request, "Debe iniciar sesión para acceder a esta página.")
                 return redirect('accounts:login')
@@ -22,7 +26,9 @@ def role_required(allowed_roles):
                 messages.error(request, "El usuario no tiene un perfil asociado.")
                 return redirect('accounts:login')
                 
-            if request.user.profile.role not in allowed_roles:
+            user_role = request.user.profile.role
+
+            if user_role not in allowed_roles:
                 messages.error(request, "No tiene permisos para acceder a esta página.")
                 return redirect(reverse('accounts:forbidden'))
                 
