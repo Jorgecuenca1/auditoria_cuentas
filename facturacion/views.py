@@ -1,6 +1,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from .models import Factura, Paciente, Contrato, RipsConsulta, RipsMedicamento, RipsProcedimiento, RipsHospitalizacion, RipsOtroServicio, TarifaContrato, Lote, Resolucion, ManualTarifario, UsuariosNoAptos, SubcodigoDevolucion, Devolucion
+from .models import (
+    Factura, Paciente, Contrato, RipsConsulta, RipsMedicamento, 
+    RipsProcedimiento, RipsHospitalizacion, RipsOtroServicio, 
+    TarifaContrato, Lote, Resolucion, ManualTarifario, UsuariosNoAptos, 
+    SubcodigoDevolucion, Devolucion
+)
 from .forms import FacturaForm, RipsUploadForm, ContratoForm, TarifaContratoForm, LoteForm, AsignarAuditorLoteForm, ResolucionForm
 from accounts.models import Profile, CatalogoCUPS, CatalogoCIE10, CatalogoCUMS, CatalogoMunicipio, CatalogoPais
 from .validators import validate_rips_item, validate_rips_user
@@ -35,6 +40,14 @@ def radicar_factura(request):
             rips_errors = [] # Lista para acumular errores de validación del RIPS
             try:
                 data = json.load(archivo)
+
+                # >>> NUEVA VALIDACIÓN: Número de factura del formulario vs. RIPS <<<
+                # El campo 'numFactura' ahora se espera en la raíz del JSON RIPS
+                rips_num_factura = data.get("numFactura")
+                if str(factura.numero) != str(rips_num_factura):
+                    messages.error(request, f"No puedes continuar. El número de factura ({factura.numero}) no es el mismo que el número de factura en el archivo RIPS ({rips_num_factura}).")
+                    return redirect('facturacion:radicar_factura')
+                # <<< FIN NUEVA VALIDACIÓN >>>
 
                 factura_main_paciente = None
 
