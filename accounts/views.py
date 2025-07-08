@@ -33,7 +33,7 @@ def profile_view(request):
             days_left = (invoice.fecha_radicacion - today).days
             if days_left <= 20:
                 notifications.append({
-                    'message': f'Tienes una factura pendiente de auditoría (No. {invoice.numero}) con fecha de radicación {invoice.fecha_radicacion.strftime('%Y-%m-%d')}. Fecha límite: {auditoria_deadline.strftime('%Y-%m-%d')}.',
+                    'message': f'Tienes una factura pendiente de auditoría (No. {invoice.numero}) con fecha de radicación {invoice.fecha_radicacion.strftime("%Y-%m-%d")}. Fecha límite: {auditoria_deadline.strftime("%Y-%m-%d")}.',
                     'url': f'/auditoria/factura/{invoice.pk}/'
                 })
 
@@ -49,7 +49,7 @@ def profile_view(request):
             days_left = (invoice.fecha_radicacion - today).days
             if days_left <= 20:
                 notifications.append({
-                    'message': f'Factura pendiente de auditoría (No. {invoice.numero}) asignada a {invoice.auditor.username} con fecha de radicación {invoice.fecha_radicacion.strftime('%Y-%m-%d')}. Fecha límite: {auditoria_deadline.strftime('%Y-%m-%d')}.',
+                    'message': f'Factura pendiente de auditoría (No. {invoice.numero}) asignada a {invoice.auditor.username} con fecha de radicación {invoice.fecha_radicacion.strftime("%Y-%m-%d")}. Fecha límite: {auditoria_deadline.strftime("%Y-%m-%d")}.',
                     'url': f'/auditoria/factura/{invoice.pk}/'
                 })
 
@@ -66,7 +66,7 @@ def profile_view(request):
             days_left = (glosa.fecha_glosa - today).days
             if days_left <= 3:
                 notifications.append({
-                    'message': f'Tienes una glosa pendiente de respuesta para la factura No. {glosa.factura.numero} con fecha de glosa {glosa.fecha_glosa.strftime('%Y-%m-%d')}. Fecha límite: {response_deadline.strftime('%Y-%m-%d')}.',
+                    'message': f'Tienes una glosa pendiente de respuesta para la factura No. {glosa.factura.numero} con fecha de glosa {glosa.fecha_glosa.strftime("%Y-%m-%d")}. Fecha límite: {response_deadline.strftime("%Y-%m-%d")}.',
                     'url': f'/auditoria/responder-glosa/{glosa.pk}/'
                 })
     
