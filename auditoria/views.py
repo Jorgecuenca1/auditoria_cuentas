@@ -342,24 +342,27 @@ def reporte_auditoria_lote(request):
     selected_lotes_ids = []
 
     if request.method == 'POST':
-        selected_lotes_ids = request.POST.getlist('lotes')
-        if selected_lotes_ids:
-            facturas_en_lotes = Factura.objects.filter(lote__id__in=selected_lotes_ids).select_related(
-                'paciente', 'ips', 'eps', 'auditor__profile', 'lote'
+        lote_ids = request.POST.getlist('lotes')
+        if lote_ids:
+            # Convertir IDs a enteros para la consulta
+            selected_lotes_ids = [int(id) for id in lote_ids]
+            # Obtener facturas para los lotes seleccionados con toda la información relacionada
+            facturas_en_lotes = Factura.objects.filter(
+                lote__id__in=selected_lotes_ids
+            ).select_related(
+                'ips', 'eps', 'paciente', 'contrato', 'lote', 'auditor'
             ).prefetch_related(
-                'glosa_set__tipo_glosa', 
-                'glosa_set__subtipo_glosa', 
-                'glosa_set__subcodigo_glosa',
-                'glosa_set__tipo_glosa_respuesta',
-                'glosa_set__subtipo_glosa_respuesta'
-            ).order_by('numero')
-        else:
-            messages.warning(request, "Por favor, selecciona al menos un lote para generar el reporte.")
+                'glosas', 'glosas__tipo_glosa', 'devolucion', 'devolucion__subcodigo'
+            ).order_by('lote__nombre', 'numero')
 
     context = {
         'lotes': lotes,
         'facturas_en_lotes': facturas_en_lotes,
-        'selected_lotes_ids': [int(x) for x in selected_lotes_ids], # Convert to int for template comparison
+        'selected_lotes_ids': selected_lotes_ids,
+        'valor_total_lotes': sum(f.valor_bruto for f in facturas_en_lotes),
+        'total_facturas_lotes': len(facturas_en_lotes),
+        'total_glosas_lotes': sum(f.glosas.count() for f in facturas_en_lotes),
+        'valor_total_glosado_lotes': sum(g.valor_glosado for f in facturas_en_lotes for g in f.glosas.all()),
     }
     return render(request, 'auditoria/reportes/reporte_auditoria_lote.html', context)
 
