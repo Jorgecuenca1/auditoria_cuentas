@@ -48,8 +48,9 @@ def profile_view(request):
         for invoice in pending_invoices_et:
             days_left = (invoice.fecha_radicacion - today).days
             if days_left <= 20:
+                auditor_name = invoice.auditor.username if invoice.auditor else "(Sin asignar)"
                 notifications.append({
-                    'message': f'Factura pendiente de auditoría (No. {invoice.numero}) asignada a {invoice.auditor.username} con fecha de radicación {invoice.fecha_radicacion.strftime("%Y-%m-%d")}. Fecha límite: {auditoria_deadline.strftime("%Y-%m-%d")}.',
+                    'message': f'Factura pendiente de auditoría (No. {invoice.numero}) asignada a {auditor_name} con fecha de radicación {invoice.fecha_radicacion.strftime("%Y-%m-%d")}. Fecha límite: {auditoria_deadline.strftime("%Y-%m-%d")}.',
                     'url': f'/auditoria/factura/{invoice.pk}/'
                 })
 
