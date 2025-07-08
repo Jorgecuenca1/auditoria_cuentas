@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure--rns78#fhq*77=7e2q0m@j!pq9ld#-(v)7t07^dl_-s*=b=pjh
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*','corpofuturo.org','cuentasmedicas.corpofuturo.org','https://cuentasmedicas.corpofuturo.org']
+ALLOWED_HOSTS = ['*','corpofuturo.org','seguroslavictoria.co','cuentasmedicas.seguroslavictoria.co','cuentasmedicas.corpofuturo.org','https://cuentasmedicas.seguroslavictoria.co','https://cuentasmedicas.corpofuturo.org']
 
 
 # Application definition
@@ -61,12 +61,16 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'auditoria_cuentas.urls'
 CORS_ALLOWED_ORIGINS = [
     "https://cuentasmedicas.corpofuturo.org",
-    "https://corpofuturo.org"
+    "https://corpofuturo.org",
+"https://cuentasmedicas.seguroslavictoria.co",
+    "https://seguroslavictoria.co",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://corpofuturo.org",
     "https://cuentasmedicas.corpofuturo.org",
+"https://cuentasmedicas.seguroslavictoria.co",
+    "https://seguroslavictoria.co",
     "http://127.0.0.1:8000"
 ]
 
