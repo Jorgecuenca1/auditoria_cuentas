@@ -169,13 +169,11 @@
                 </li>
                 {% endif %}
             </ul>
-            <!-- Debug: Notifications Count: {{ notifications_count }} -->
-
-            
+            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
             {% if user.is_authenticated %}
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                    <i class="bi bi-person-circle"></i> {{ user.username }}
+                    <i class="bi bi-person-circle"></i> {{ user.username }} <span class="badge bg-secondary">{{ user.profile.role }}</span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><a class="dropdown-item" href="{% url 'accounts:profile' %}">
@@ -199,6 +197,7 @@
                 </a>
             </li>
             {% endif %}
+            </ul>
         </div>
     </div>
 </nav>

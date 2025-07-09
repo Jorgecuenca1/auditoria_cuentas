@@ -282,6 +282,8 @@ def auditar_factura(request, factura_id):
                 glosa_kwargs['paciente'] = related_item.paciente
             else:
                 messages.warning(request, "Glosa creada sin asociación a un ítem RIPS específico o paciente.")
+            # Asignar la IPS de la factura a la glosa
+            glosa_kwargs['ips'] = factura.ips
             Glosa.objects.create(**glosa_kwargs)
             messages.success(request, "Glosa creada exitosamente.")
             return redirect('auditoria:auditar_factura', factura_id=factura.id)
@@ -418,10 +420,9 @@ def responder_glosa(request, glosa_id):
 def glosas_pendientes(request):
     glosas = Glosa.objects.filter(estado="Pendiente")
     if request.user.profile.role == 'IPS':
-        glosas = glosas.filter(factura__ips=request.user.profile)
+        glosas = glosas.filter(ips=request.user.profile)
     elif request.user.profile.role == 'EPS':
         glosas = glosas.filter(factura__eps=request.user.profile)
-    
     glosas = glosas.order_by('-fecha_glosa')
     return render(request, 'auditoria/glosas_pendientes.html', {'glosas': glosas})
 

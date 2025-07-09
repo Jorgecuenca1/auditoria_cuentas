@@ -11,7 +11,9 @@
             <thead>
                 <tr>
                     <th>Factura</th>
-                    <th>Código Glosa</th>
+                    <th>Tipo</th>
+                    <th>Subtipo</th>
+                    <th>Subcódigo</th>
                     <th>Descripción</th>
                     <th>Valor Glosado</th>
                     <th>Fecha Glosa</th>
@@ -21,8 +23,28 @@
             <tbody>
                 {% for glosa in glosas %}
                 <tr>
-                    <td>{{ glosa.factura.numero_factura }}</td>
-                    <td>{{ glosa.codigo_glosa }}</td>
+                    <td>{{ glosa.factura.numero }}</td>
+                    <td>
+                      {% if glosa.tipo_glosa %}
+                        <strong>{{ glosa.tipo_glosa.codigo }}</strong> {{ glosa.tipo_glosa.nombre }}
+                      {% else %}
+                        <span class="text-muted">N/A</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if glosa.subtipo_glosa %}
+                        <strong>{{ glosa.subtipo_glosa.codigo }}</strong> {{ glosa.subtipo_glosa.nombre }}
+                      {% else %}
+                        <span class="text-muted">N/A</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if glosa.subcodigo_glosa %}
+                        <strong>{{ glosa.subcodigo_glosa.codigo }}</strong> {{ glosa.subcodigo_glosa.nombre }}
+                      {% else %}
+                        <span class="text-muted">N/A</span>
+                      {% endif %}
+                    </td>
                     <td>{{ glosa.descripcion }}</td>
                     <td>${{ glosa.valor_glosado|floatformat:2 }}</td>
                     <td>{{ glosa.fecha_glosa|date:"d/m/Y" }}</td>

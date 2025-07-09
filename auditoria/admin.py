@@ -31,13 +31,13 @@ class SubtipoGlosaRespuestaIPSAdmin(admin.ModelAdmin):
 
 @admin.register(Glosa)
 class GlosaAdmin(admin.ModelAdmin):
-    list_display = ('factura', 'paciente', 'estado', 'fecha_glosa', 'fecha_respuesta', 'aceptada')
-    list_filter = ('estado', 'aceptada', 'fecha_glosa', 'fecha_respuesta')
-    search_fields = ('factura__numero', 'paciente__numero_documento')
+    list_display = ('factura', 'ips', 'paciente', 'estado', 'fecha_glosa', 'fecha_respuesta', 'aceptada')
+    list_filter = ('estado', 'aceptada', 'fecha_glosa', 'fecha_respuesta', 'ips')
+    search_fields = ('factura__numero', 'paciente__numero_documento', 'ips__entidad_nombre')
     readonly_fields = ('fecha_glosa',)
     fieldsets = (
         ('Información General', {
-            'fields': ('factura', 'paciente', 'estado', 'aceptada')
+            'fields': ('factura', 'ips', 'paciente', 'estado', 'aceptada')
         }),
         ('Detalle de la Glosa', {
             'fields': ('tipo_glosa', 'subtipo_glosa', 'subcodigo_glosa', 'descripcion', 'valor_glosado')

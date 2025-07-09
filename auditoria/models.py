@@ -48,6 +48,7 @@ class SubtipoGlosaRespuestaIPS(models.Model):
 
 class Glosa(models.Model):
     factura = models.ForeignKey(Factura, on_delete=models.CASCADE, related_name='glosas')
+    ips = models.ForeignKey(Profile, null=True, blank=True, on_delete=models.SET_NULL, limit_choices_to={'role': 'IPS'})
     paciente = models.ForeignKey(Paciente, on_delete=models.SET_NULL, null=True, blank=True)
     consulta = models.ForeignKey(RipsConsulta, on_delete=models.SET_NULL, null=True, blank=True, related_name='glosas')
     medicamento = models.ForeignKey(RipsMedicamento, on_delete=models.SET_NULL, null=True, blank=True, related_name='glosas')

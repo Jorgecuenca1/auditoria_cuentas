@@ -58,8 +58,8 @@ def profile_view(request):
         # Alertas para glosas pendientes de respuesta (3 días)
         response_deadline = today + timedelta(days=3)
         pending_glosas = Glosa.objects.filter(
-            factura__ips=profile,
-            estado='Glosada',
+            ips=profile,
+            estado='Pendiente',
             fecha_glosa__lte=response_deadline
         ).order_by('fecha_glosa')
 
@@ -67,7 +67,7 @@ def profile_view(request):
             days_left = (glosa.fecha_glosa - today).days
             if days_left <= 3:
                 notifications.append({
-                    'message': f'Tienes una glosa pendiente de respuesta para la factura No. {glosa.factura.numero} con fecha de glosa {glosa.fecha_glosa.strftime("%Y-%m-%d")}. Fecha límite: {response_deadline.strftime("%Y-%m-%d")}.',
+                    'message': f'Tienes una glosa pendiente de respuesta para la factura No. {glosa.factura.numero} (solo tienes 3 días para responder). Fecha de glosa: {glosa.fecha_glosa.strftime("%Y-%m-%d")}.',
                     'url': f'/auditoria/responder-glosa/{glosa.pk}/'
                 })
     
