@@ -100,6 +100,7 @@ class Factura(models.Model):
     valor_bruto = models.DecimalField(max_digits=12, decimal_places=2)
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default="Radicada")
     archivo_rips = models.FileField(upload_to='rips/')
+    archivo_pdf = models.FileField(upload_to='facturas_pdf/', blank=True, null=True, help_text="Archivo PDF de la factura")
     contrato = models.ForeignKey('Contrato', on_delete=models.SET_NULL, null=True, blank=True)
     lote = models.ForeignKey(Lote, on_delete=models.SET_NULL, null=True, blank=True, related_name='facturas', help_text="Lote al que pertenece esta factura")
     auditor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,

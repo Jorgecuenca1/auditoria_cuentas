@@ -44,6 +44,17 @@
         </div>
     </div>
 
+    {% if factura.archivo_pdf %}
+    <div class="mb-3">
+        <label><strong>Factura PDF:</strong></label>
+        <a href="{{ factura.archivo_pdf.url }}" target="_blank" class="btn btn-outline-primary btn-sm">Ver/Descargar PDF</a>
+        <br>
+        <embed src="{{ factura.archivo_pdf.url }}" type="application/pdf" width="100%" height="500px"/>
+    </div>
+    {% else %}
+    <p class="text-muted">No se ha subido el PDF de la factura.</p>
+    {% endif %}
+
     {% if factura.estado == 'Devuelta' and factura.devolucion %}
     <div class="card shadow-sm mb-4 border-danger">
         <div class="card-header bg-danger text-white">

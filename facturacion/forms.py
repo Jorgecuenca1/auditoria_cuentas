@@ -55,10 +55,11 @@ class FacturaForm(forms.ModelForm):
     fecha_emision = forms.DateField(
         widget=forms.DateInput(attrs={'type': 'date'})
     )
+    archivo_pdf = forms.FileField(label="Archivo PDF de la Factura", required=True)
 
     class Meta:
         model = Factura
-        fields = ['numero', 'cufe', 'fecha_emision', 'eps', 'valor_bruto', 'archivo_rips']
+        fields = ['numero', 'cufe', 'fecha_emision', 'eps', 'valor_bruto', 'archivo_rips', 'archivo_pdf']
 
 class RipsUploadForm(forms.Form):
     rips_file = forms.FileField(label="Archivo RIPS (JSON)")

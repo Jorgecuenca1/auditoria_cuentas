@@ -33,6 +33,7 @@ def radicar_factura(request):
             factura = form.save(commit=False)
             factura.ips = request.user.profile
             factura.estado = "Radicada"
+            factura.archivo_pdf = form.cleaned_data['archivo_pdf']
             print(f"Initial factura (before patient): {factura.pk}, patient: {factura.paciente}")
 
             # Procesar el archivo RIPS

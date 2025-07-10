@@ -16,29 +16,59 @@
         <h3 class="card-title mb-4">Radicar Factura</h3>
         <form method="post" enctype="multipart/form-data">
           {% csrf_token %}
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+              {{ form.non_field_errors }}
+            </div>
+          {% endif %}
           <div class="mb-3">
             <label class="form-label">Número</label>
             {{ form.numero }}
+            {% if form.numero.errors %}
+              <div class="text-danger">{{ form.numero.errors }}</div>
+            {% endif %}
           </div>
           <div class="mb-3">
             <label class="form-label">CUFE</label>
             {{ form.cufe }}
+            {% if form.cufe.errors %}
+              <div class="text-danger">{{ form.cufe.errors }}</div>
+            {% endif %}
           </div>
           <div class="mb-3">
             <label class="form-label">Fecha Emisión</label>
             {{ form.fecha_emision }}
+            {% if form.fecha_emision.errors %}
+              <div class="text-danger">{{ form.fecha_emision.errors }}</div>
+            {% endif %}
           </div>
           <div class="mb-3">
             <label class="form-label">EPS</label>
             {{ form.eps }}
+            {% if form.eps.errors %}
+              <div class="text-danger">{{ form.eps.errors }}</div>
+            {% endif %}
           </div>
           <div class="mb-3">
             <label class="form-label">Valor Bruto</label>
             {{ form.valor_bruto }}
+            {% if form.valor_bruto.errors %}
+              <div class="text-danger">{{ form.valor_bruto.errors }}</div>
+            {% endif %}
           </div>
           <div class="mb-3">
             <label class="form-label">Archivo RIPS</label>
             {{ form.archivo_rips }}
+            {% if form.archivo_rips.errors %}
+              <div class="text-danger">{{ form.archivo_rips.errors }}</div>
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Archivo PDF de la Factura</label>
+            {{ form.archivo_pdf }}
+            {% if form.archivo_pdf.errors %}
+              <div class="text-danger">{{ form.archivo_pdf.errors }}</div>
+            {% endif %}
           </div>
           <div class="d-grid gap-2">
             <button type="submit" class="btn btn-success">Radicar</button>
