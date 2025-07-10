@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Historial de Chat - Asistente Virtual{% endblock %}
+
+{% block extra_css %}
+<style>
+    .history-container {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .history-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 10px 10px 0 0;
+        margin: -20px -20px 20px -20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .history-header h4 {
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .session-card {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: pointer;
+    }
+
+    .session-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .session-card.active {
+        border-left: 4px solid #28a745;
+    }
+
+    .session-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .session-title {
+        font-weight: 600;
+        color: #333;
+        margin: 0;
+    }
+
+    .session-date {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+
+    .session-stats {
+        display: flex;
+        gap: 15px;
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .stat-icon {
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-size: 10px;
+    }
+
+    .stat-icon.messages {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .stat-icon.time {
+        background: #f3e5f5;
+        color: #7b1fa2;
+    }
+
+    .session-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .action-btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .action-btn.primary {
+        background: #28a745;
+        color: white;
+    }
+
+    .action-btn.primary:hover {
+        background: #218838;
+    }
+
+    .action-btn.secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .action-btn.secondary:hover {
+        background: #5a6268;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6c757d;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+
+    .empty-state h5 {
+        margin-bottom: 10px;
+        color: #495057;
+    }
+
+    .role-badge {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        margin-left: 10px;
+    }
+
+    @media (max-width: 768px) {
+        .session-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 5px;
+        }
+        
+        .session-stats {
+            flex-wrap: wrap;
+        }
+        
+        .session-actions {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="history-container">
+                <div class="history-header">
+                    <div>
+                        <h4>
+                            <i class="fas fa-history me-2"></i>
+                            Historial de Conversaciones
+                            <span class="role-badge">{{ user_role }}</span>
+                        </h4>
+                    </div>
+                    <div>
+                        <a href="{% url 'chatbot:chatbot_view' %}" class="action-btn primary">
+                            <i class="fas fa-arrow-left"></i> Volver al Chat
+                        </a>
+                    </div>
+                </div>
+
+                {% if sessions %}
+                    {% for session in sessions %}
+                        <div class="session-card {% if session.is_active %}active{% endif %}">
+                            <div class="session-header">
+                                <div>
+                                    <h6 class="session-title">
+                                        <i class="fas fa-comments me-2"></i>
+                                        Conversación #{{ session.id }}
+                                    </h6>
+                                    <div class="session-date">
+                                        <i class="fas fa-calendar me-1"></i>
+                                        {{ session.created_at|date:"d/m/Y H:i" }}
+                                        {% if session.updated_at != session.created_at %}
+                                            - Última actividad: {{ session.updated_at|date:"d/m/Y H:i" }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="session-stats">
+                                    <div class="stat-item">
+                                        <div class="stat-icon messages">
+                                            <i class="fas fa-comment"></i>
+                                        </div>
+                                        {{ session.messages.count }} mensajes
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-icon time">
+                                            <i class="fas fa-clock"></i>
+                                        </div>
+                                        {{ session.created_at|timesince }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="session-actions">
+                                {% if session.is_active %}
+                                    <span class="action-btn primary">
+                                        <i class="fas fa-check"></i> Sesión Activa
+                                    </span>
+                                {% else %}
+                                    <a href="{% url 'chatbot:load_chat_session' session.id %}" class="action-btn primary">
+                                        <i class="fas fa-play"></i> Continuar
+                                    </a>
+                                {% endif %}
+                                
+                                <a href="{% url 'chatbot:chatbot_view' %}" class="action-btn secondary">
+                                    <i class="fas fa-eye"></i> Ver Detalles
+                                </a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-comments"></i>
+                        <h5>No hay conversaciones previas</h5>
+                        <p>Comienza una nueva conversación con el asistente virtual</p>
+                        <a href="{% url 'chatbot:start_new_chat' %}" class="action-btn primary">
+                            <i class="fas fa-plus"></i> Nueva Conversación
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

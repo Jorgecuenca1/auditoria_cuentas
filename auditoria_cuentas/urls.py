@@ -10,6 +10,7 @@ urlpatterns = [
     path('facturacion/', include('facturacion.urls')),
     path('auditoria/', include('auditoria.urls')),
     path('cartera/', include('cartera.urls')),
+    path('chatbot/', include('chatbot.urls')),
     path('403/', error_403, name='403'),
     path('', landing_page, name='landing'),
     path('dashboard/', dashboard_view, name='dashboard'),

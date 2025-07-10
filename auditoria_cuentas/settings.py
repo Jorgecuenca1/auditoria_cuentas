@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'facturacion',
     'auditoria',
     'cartera',
+    'chatbot',
 ]
 LANGUAGE_CODE = 'es-co'
 TIME_ZONE = 'America/Bogota'
@@ -151,3 +152,7 @@ LOGOUT_REDIRECT_URL = '/'
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
+
+# Configuración de Gemini AI
+GEMINI_API_KEY = "AIzaSyDEZoqEpVXZIKRUSeIq1VEG4ei1imYDyKg"
+GEMINI_MODEL = "gemini-2.0-flash"
