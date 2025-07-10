@@ -1,13 +1,15 @@
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect, get_object_or_404
-from facturacion.models import Factura, Paciente, RipsConsulta, RipsMedicamento, RipsProcedimiento, RipsHospitalizacion, RipsOtroServicio, Devolucion, CodigoDevolucion, SubcodigoDevolucion
-from .models import Glosa, TipoGlosa, SubtipoGlosa, SubCodigoGlosa, TipoGlosaRespuestaIPS, SubtipoGlosaRespuestaIPS
+from facturacion.models import Factura, Paciente, RipsConsulta, RipsMedicamento, RipsProcedimiento, RipsHospitalizacion, RipsOtroServicio, Devolucion, CodigoDevolucion, SubcodigoDevolucion, Lote
+from .models import Glosa, TipoGlosa, SubtipoGlosa, SubCodigoGlosa, TipoGlosaRespuestaIPS, SubtipoGlosaRespuestaIPS, HistorialGlosa
 from .forms import TipoAuditoriaForm
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.contrib import messages
 from django.db.models import Sum, Count, F, Case, When, Value, CharField
 from accounts.decorators import role_required
+from decimal import Decimal # Importar Decimal
+
 
 @login_required
 @role_required('ET')
@@ -15,7 +17,7 @@ def reporte_glosas(request):
     # Estadísticas generales de glosas
     total_glosas = Glosa.objects.count()
     glosas_pendientes = Glosa.objects.filter(estado="Pendiente").count()
-    glosas_respondidas = Glosa.objects.filter(estado="Respondida").count()
+    glosas_respondidas = Glosa.objects.filter(estado="Respondida").count() # Esto necesitará ajustarse a los nuevos estados
     valor_total_glosado = Glosa.objects.aggregate(total=Sum('valor_glosado'))['total'] or 0
 
     # Glosas por IPS (factura__ips se refiere al Profile)
@@ -127,11 +129,6 @@ def reporte_glosas_por_tipo_item(request):
         'glosas_por_tipo': glosas_por_tipo
     })
 
-from .models import Factura
-from django.contrib.auth.models import User
-from django.contrib import messages
-from django.shortcuts import get_object_or_404
-
 @login_required
 @role_required(['ET', 'AUDITOR'])
 def lista_radicados(request):
@@ -203,28 +200,9 @@ def lista_radicados(request):
     }
     return render(request, 'auditoria/lista_radicados.html', context)
 
-from functools import wraps
-from django.shortcuts import redirect
-
-def role_required(*allowed_roles):
-    """
-    Decorator que permite acceso solo si request.user.profile.role
-    está dentro de allowed_roles.
-    Uso:
-      @role_required('ET', 'AUDITOR')
-    """
-    def decorator(view_fn):
-        @wraps(view_fn)
-        def _wrapped(request, *args, **kwargs):
-            user_role = getattr(request.user, 'profile', None) and request.user.profile.role
-            if user_role not in allowed_roles:
-                return redirect('accounts:forbidden')  # o a donde quieras
-            return view_fn(request, *args, **kwargs)
-        return _wrapped
-    return decorator
 
 @login_required
-@role_required('ET','AUDITOR')
+@role_required(['ET','AUDITOR'])
 def auditar_factura(request, factura_id):
     factura = get_object_or_404(Factura, id=factura_id)
     tipos_glosa = TipoGlosa.objects.all()
@@ -238,15 +216,16 @@ def auditar_factura(request, factura_id):
     
     if request.method == 'POST':
         if 'finalizar_auditoria' in request.POST:
-            glosas_pendientes = Glosa.objects.filter(factura=factura, estado="Pendiente").exists()
-            if glosas_pendientes:
-                messages.error(request, "No se puede finalizar la auditoría mientras haya glosas pendientes por responder.")
-            else:
-                factura.estado = 'Auditada'
-                factura.save()
-                messages.success(request, "Auditoría finalizada exitosamente.")
-                return redirect('auditoria:lista_radicados')
-        else:
+            # Remove the check for pending glosas as per the revised workflow
+            # glosas_pendientes = Glosa.objects.filter(factura=factura, estado="Pendiente").exists()
+            # if glosas_pendientes:
+            #     messages.error(request, "No se puede finalizar la auditoría mientras haya glosas pendientes por responder.")
+            # else:
+            factura.estado = 'Auditada'
+            factura.save()
+            messages.success(request, "Auditoría finalizada exitosamente.")
+            return redirect('auditoria:lista_radicados')
+        elif factura.estado != 'Auditada': # Solo permitir crear glosas si la auditoría no está finalizada
             item_type = request.POST.get('item_type')
             item_pk = request.POST.get('item_pk')
             descripcion = request.POST.get('descripcion')
@@ -284,9 +263,21 @@ def auditar_factura(request, factura_id):
                 messages.warning(request, "Glosa creada sin asociación a un ítem RIPS específico o paciente.")
             # Asignar la IPS de la factura a la glosa
             glosa_kwargs['ips'] = factura.ips
-            Glosa.objects.create(**glosa_kwargs)
+            glosa = Glosa.objects.create(**glosa_kwargs)
+            
+            # Registrar en el historial
+            HistorialGlosa.registrar_cambio(
+                glosa=glosa,
+                accion='creada',
+                usuario=request.user,
+                descripcion_cambio=f"Glosa creada por {request.user.get_full_name() or request.user.username}",
+                request=request
+            )
+            
             messages.success(request, "Glosa creada exitosamente.")
             return redirect('auditoria:auditar_factura', factura_id=factura.id)
+        else:
+            messages.error(request, "No se pueden crear nuevas glosas porque la auditoría ya fue finalizada.")
     
     glosas = Glosa.objects.filter(factura=factura).select_related('tipo_glosa', 'subtipo_glosa', 'subcodigo_glosa', 'tipo_glosa_respuesta', 'subtipo_glosa_respuesta')
     return render(request, 'auditoria/auditar_factura.html', {
@@ -302,7 +293,7 @@ def auditar_factura(request, factura_id):
     })
 
 @login_required
-@role_required('ET', 'AUDITOR')
+@role_required(['ET', 'AUDITOR'])
 def reporte_auditoria_detalle(request, factura_id):
     factura = get_object_or_404(
         Factura.objects.select_related(
@@ -313,7 +304,37 @@ def reporte_auditoria_detalle(request, factura_id):
     glosas = Glosa.objects.filter(factura=factura).select_related(
         'tipo_glosa', 'subtipo_glosa', 'subcodigo_glosa',
         'tipo_glosa_respuesta', 'subtipo_glosa_respuesta'
+    ).prefetch_related(
+        'historial', 'historial__usuario'
     ).order_by('fecha_glosa')
+
+    valor_total_glosado_definitivo = Decimal('0.00')
+    for glosa in glosas:
+        if glosa.estado == 'Rechazada ET':
+            # Si la ET rechaza la respuesta de la IPS, el valor glosado original es definitivo
+            valor_total_glosado_definitivo += glosa.valor_glosado
+        elif glosa.estado == 'Aceptada ET' and glosa.valor_aceptado_et is not None:
+            # Si la ET acepta parcialmente, se usa el valor_aceptado_et (que representa lo que AUN se glosa, si la IPS no lo levantó todo)
+            # Si glosa.valor_aceptado_et es 0, significa que la glosa fue completamente levantada.
+            valor_total_glosado_definitivo += glosa.valor_aceptado_et
+        # Glosas en 'Pendiente', 'Respondida IPS', 'Devuelta a IPS', 'Indefinida' no afectan el valor definitivo de la cartera hasta que la ET decida.
+        # Asumo que valor_aceptado_et en el modelo glosa representa lo que queda glosado, si es 0, la glosa se levanta.
+
+    # Calcular el valor neto a pagar
+    valor_neto_a_pagar = factura.valor_bruto - valor_total_glosado_definitivo
+    if valor_neto_a_pagar < 0:
+        valor_neto_a_pagar = Decimal('0.00') # Asegurar que no sea negativo
+
+    # Calcular estadísticas del historial
+    total_historial = sum(glosa.historial.count() for glosa in glosas)
+    glosas_con_historial = sum(1 for glosa in glosas if glosa.historial.count() > 0)
+    
+    # Obtener la fecha de la última actividad
+    ultima_actividad = None
+    for glosa in glosas:
+        for registro in glosa.historial.all():
+            if ultima_actividad is None or registro.fecha_cambio > ultima_actividad:
+                ultima_actividad = registro.fecha_cambio
 
     rips_consultas = RipsConsulta.objects.filter(factura=factura)
     rips_medicamentos = RipsMedicamento.objects.filter(factura=factura)
@@ -330,6 +351,11 @@ def reporte_auditoria_detalle(request, factura_id):
         'rips_procedimientos': rips_procedimientos,
         'rips_hospitalizaciones': rips_hospitalizaciones,
         'rips_otros_servicios': rips_otros_servicios,
+        'valor_total_glosado_definitivo': valor_total_glosado_definitivo,
+        'valor_neto_a_pagar': valor_neto_a_pagar,
+        'total_historial': total_historial,
+        'glosas_con_historial': glosas_con_historial,
+        'ultima_actividad': ultima_actividad,
     }
 
     return render(request, 'auditoria/reportes/reporte_auditoria_detalle.html', context)
@@ -337,8 +363,7 @@ def reporte_auditoria_detalle(request, factura_id):
 @login_required
 @role_required('ET')
 def reporte_auditoria_lote(request):
-    from facturacion.models import Lote # Import Lote model here
-
+    # from facturacion.models import Lote # Ya importado al inicio
     lotes = Lote.objects.all().order_by('nombre')
     facturas_en_lotes = []
     selected_lotes_ids = []
@@ -379,7 +404,14 @@ def lista_glosas(request, factura_id):
 @role_required('IPS')
 def responder_glosa(request, glosa_id):
     glosa = get_object_or_404(Glosa, id=glosa_id)
+    
+    # Verificar que la factura esté auditada y la glosa en un estado respondible
+    if glosa.factura.estado != 'Auditada' or glosa.estado not in ['Pendiente', 'Devuelta a IPS']:
+        messages.error(request, "No se puede responder esta glosa en el estado actual de la factura o glosa.")
+        return redirect('auditoria:glosas_pendientes')
+
     tipos_respuesta = TipoGlosaRespuestaIPS.objects.all()
+    subtipos_respuesta = SubtipoGlosaRespuestaIPS.objects.all() # Pasar subtipos para el select dinámico
 
     if request.method == 'POST':
         glosa.descripcion_respuesta = request.POST.get('descripcion_respuesta')
@@ -389,40 +421,148 @@ def responder_glosa(request, glosa_id):
         if 'archivo_soporte_respuesta' in request.FILES:
             glosa.archivo_soporte_respuesta = request.FILES['archivo_soporte_respuesta']
 
-        # Lógica para la decisión de la glosa por el rol 'IPS'
-        if request.user.profile.role == 'IPS':
-            decision = request.POST.get('decision_glosa')
-            if decision == 'true':
-                glosa.aceptada = True
-                glosa.estado = 'Aceptada'
-            elif decision == 'false':
-                glosa.aceptada = False
-                glosa.estado = 'Rechazada'
-            else:
-                glosa.aceptada = None # Se mantiene como respondida pero sin decisión final
-                glosa.estado = 'Respondida'
-        else: 
-            glosa.estado = 'Respondida'
+        # La IPS indica si acepta o rechaza la glosa
+        decision_ips = request.POST.get('decision_glosa')
+        if decision_ips == 'true':
+            glosa.aceptada = True
+        elif decision_ips == 'false':
+            glosa.aceptada = False
+        else:
+            glosa.aceptada = None # No definido por la IPS
 
+        estado_anterior = glosa.estado
+        glosa.estado = 'Respondida IPS' # Cambiar estado a respondida por IPS
         glosa.fecha_respuesta = timezone.now().date()
         glosa.save()
         
-        messages.success(request, "Respuesta a la glosa enviada exitosamente.")
+        # Registrar en el historial
+        HistorialGlosa.registrar_cambio(
+            glosa=glosa,
+            accion='respondida_ips',
+            usuario=request.user,
+            estado_anterior=estado_anterior,
+            estado_nuevo=glosa.estado,
+            descripcion_cambio=f"Glosa respondida por IPS. Decisión: {'Aceptada' if glosa.aceptada else 'Rechazada' if glosa.aceptada == False else 'No definida'}",
+            request=request
+        )
+        
+        messages.success(request, "Respuesta a la glosa enviada exitosamente. Ahora está pendiente de decisión de la ET.")
         return redirect('auditoria:glosas_pendientes')
 
-    return render(request, 'auditoria/responder_glosa.html', {
+    context = {
         'glosa': glosa,
         'tipos_respuesta': tipos_respuesta,
-    })
+        'subtipos_respuesta': subtipos_respuesta,
+    }
+    return render(request, 'auditoria/responder_glosa.html', context)
+
 
 @login_required
-@role_required('IPS')
+@role_required(['ET', 'AUDITOR'])
+def decidir_respuesta_glosa(request, glosa_id):
+    glosa = get_object_or_404(Glosa, id=glosa_id)
+
+    # Solo permitir decidir si la glosa está en estado Respondida IPS o Devuelta a IPS
+    if glosa.estado not in ['Respondida IPS', 'Devuelta a IPS']:
+        messages.error(request, "Esta glosa no está en un estado que requiera una decisión de la ET.")
+        return redirect('auditoria:glosas_pendientes') # O la lista de glosas para ET
+
+    if request.method == 'POST':
+        decision_et = request.POST.get('decision_et')
+        justificacion_et = request.POST.get('justificacion_et', '')
+        valor_aceptado_et_input = request.POST.get('valor_aceptado_et')
+
+        # Guardar estado anterior para el historial
+        estado_anterior = glosa.estado
+        valor_anterior = glosa.valor_aceptado_et
+
+        if decision_et == 'aceptar_respuesta_ips':
+            glosa.estado = 'Aceptada ET'
+            glosa.valor_aceptado_et = Decimal('0.00') # La glosa se levanta completamente (el valor glosado se acepta pagar)
+            accion_historial = 'decidida_et'
+            descripcion_historial = "Respuesta de la IPS aceptada. Glosa levantada completamente."
+            messages.success(request, "Respuesta de la IPS aceptada. Glosa levantada.")
+        elif decision_et == 'rechazar_respuesta_ips':
+            glosa.estado = 'Rechazada ET'
+            glosa.valor_aceptado_et = glosa.valor_glosado # La glosa se mantiene (el valor glosado no se paga)
+            accion_historial = 'decidida_et'
+            descripcion_historial = "Respuesta de la IPS rechazada. Glosa queda definitiva."
+            messages.warning(request, "Respuesta de la IPS rechazada. Glosa queda definitiva.")
+        elif decision_et == 'devolver_a_ips':
+            glosa.estado = 'Devuelta a IPS'
+            glosa.valor_aceptado_et = None # Se reinicia el proceso de aceptación/rechazo
+            accion_historial = 'devuelta_ips'
+            descripcion_historial = "Glosa devuelta a la IPS para reevaluación."
+            messages.info(request, "Glosa devuelta a la IPS para reevaluación.")
+        else:
+            messages.error(request, "Decisión de la ET no válida.")
+            return redirect(request.META.get('HTTP_REFERER', 'auditoria:glosas_pendientes'))
+
+        # Si se proporcionó un valor aceptado específico, úsalo
+        if valor_aceptado_et_input:
+            try:
+                glosa.valor_aceptado_et = Decimal(valor_aceptado_et_input)
+            except: # En caso de un valor inválido, no se modifica
+                pass
+
+        glosa.fecha_decision_et = timezone.now().date()
+        glosa.decision_et_justificacion = justificacion_et
+        
+        glosa.save()
+        
+        # Registrar en el historial
+        HistorialGlosa.registrar_cambio(
+            glosa=glosa,
+            accion=accion_historial,
+            usuario=request.user,
+            estado_anterior=estado_anterior,
+            estado_nuevo=glosa.estado,
+            valor_anterior=valor_anterior,
+            valor_nuevo=glosa.valor_aceptado_et,
+            descripcion_cambio=f"{descripcion_historial} Justificación: {justificacion_et}",
+            request=request
+        )
+        
+        return redirect('auditoria:glosas_pendientes') # Redirigir a una lista de glosas relevantes para la ET
+
+    context = {
+        'glosa': glosa,
+    }
+    return render(request, 'auditoria/decidir_respuesta_glosa.html', context)
+
+@login_required
+@role_required(['IPS', 'ET', 'AUDITOR'])
+def historial_glosa(request, glosa_id):
+    glosa = get_object_or_404(Glosa, id=glosa_id)
+    
+    # Verificar permisos: IPS solo puede ver sus propias glosas
+    if request.user.profile.role == 'IPS' and glosa.ips != request.user.profile:
+        messages.error(request, "No tiene permisos para ver el historial de esta glosa.")
+        return redirect('auditoria:glosas_pendientes')
+    
+    # Obtener el historial ordenado por fecha
+    historial = glosa.historial.all().select_related('usuario')
+    
+    context = {
+        'glosa': glosa,
+        'historial': historial,
+    }
+    return render(request, 'auditoria/historial_glosa.html', context)
+
+@login_required
+@role_required(['IPS', 'ET', 'AUDITOR'])
 def glosas_pendientes(request):
-    glosas = Glosa.objects.filter(estado="Pendiente")
+    glosas = Glosa.objects.filter(estado__in=["Pendiente", "Respondida IPS", "Devuelta a IPS"]) # Mostrar glosas relevantes para IPS y ET
     if request.user.profile.role == 'IPS':
         glosas = glosas.filter(ips=request.user.profile)
     elif request.user.profile.role == 'EPS':
         glosas = glosas.filter(factura__eps=request.user.profile)
+    elif request.user.profile.role == 'ET' or request.user.profile.role == 'AUDITOR':
+        # ET/Auditor ve glosas que le competen decidir o las que están en proceso
+        glosas = glosas.filter(factura__auditor=request.user).exclude(estado__in=['Aceptada ET', 'Rechazada ET', 'Indefinida']) # O ajusta el filtro según lo que quieras que vea el auditor/ET
+        # Si la ET debe ver todas las glosas para decidir sobre ellas, el filtro cambia
+        # Por ahora, se mostrarán las que aún no tienen una decisión final de la ET
+
     glosas = glosas.order_by('-fecha_glosa')
     return render(request, 'auditoria/glosas_pendientes.html', {'glosas': glosas})
 
@@ -446,11 +586,11 @@ def lista_devoluciones(request):
 @login_required
 @role_required(['ET', 'AUDITOR'])
 def devolver_factura_manual(request, factura_id):
-    print(f"DEBUG: devolver_factura_manual entered. User authenticated: {request.user.is_authenticated}")
-    if request.user.is_authenticated and hasattr(request.user, 'profile'):
-        print(f"DEBUG: User profile role: {request.user.profile.role}")
-    else:
-        print("DEBUG: User not authenticated or profile not found.")
+    # print(f"DEBUG: devolver_factura_manual entered. User authenticated: {request.user.is_authenticated}")
+    # if request.user.is_authenticated and hasattr(request.user, 'profile'):
+    #     print(f"DEBUG: User profile role: {request.user.profile.role}")
+    # else:
+    #     print("DEBUG: User not authenticated or profile not found.")
 
     if request.method == 'POST':
         factura = get_object_or_404(Factura, pk=factura_id)

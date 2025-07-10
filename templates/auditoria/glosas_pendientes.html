@@ -1,10 +1,19 @@
 {% extends 'base.html' %}
-{% block title %}Glosas Pendientes por Responder{% endblock %}
+{% block title %}Glosas Pendientes{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <h2 class="mb-4">Glosas Pendientes por Responder</h2>
+    <h2 class="mb-4">Glosas Pendientes</h2>
     
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
     {% if glosas %}
     <div class="table-responsive">
         <table class="table table-striped">
@@ -16,7 +25,13 @@
                     <th>Subcódigo</th>
                     <th>Descripción</th>
                     <th>Valor Glosado</th>
+                    <th>Estado</th>
                     <th>Fecha Glosa</th>
+                    {% if request.user.profile.role == 'ET' or request.user.profile.role == 'AUDITOR' %}
+                      <th>Fecha Respuesta IPS</th>
+                      <th>Decisión IPS</th>
+                      <th>Fecha Decisión ET</th>
+                    {% endif %}
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -47,12 +62,55 @@
                     </td>
                     <td>{{ glosa.descripcion }}</td>
                     <td>${{ glosa.valor_glosado|floatformat:2 }}</td>
-                    <td>{{ glosa.fecha_glosa|date:"d/m/Y" }}</td>
                     <td>
-                        <a href="{% url 'auditoria:responder_glosa' glosa.id %}" 
-                           class="btn btn-primary btn-sm">
-                            Responder
-                        </a>
+                        {% if glosa.estado == 'Pendiente' %}
+                            <span class="badge bg-warning">{{ glosa.get_estado_display }}</span>
+                        {% elif glosa.estado == 'Respondida IPS' %}
+                            <span class="badge bg-info">{{ glosa.get_estado_display }}</span>
+                        {% elif glosa.estado == 'Aceptada ET' %}
+                            <span class="badge bg-success">{{ glosa.get_estado_display }}</span>
+                        {% elif glosa.estado == 'Rechazada ET' %}
+                            <span class="badge bg-danger">{{ glosa.get_estado_display }}</span>
+                        {% elif glosa.estado == 'Devuelta a IPS' %}
+                            <span class="badge bg-secondary">{{ glosa.get_estado_display }}</span>
+                        {% else %}
+                            <span class="badge bg-primary">{{ glosa.get_estado_display }}</span>
+                        {% endif %}
+                    </td> <td>{{ glosa.fecha_glosa|date:"d/m/Y" }}</td>
+                    {% if request.user.profile.role == 'ET' or request.user.profile.role == 'AUDITOR' %}
+                      <td>{{ glosa.fecha_respuesta|date:"d/m/Y"|default:"N/A" }}</td>
+                      <td>{% if glosa.aceptada %}Sí{% elif glosa.aceptada == False %}No{% else %}N/A{% endif %}</td>
+                      <td>{{ glosa.fecha_decision_et|date:"d/m/Y"|default:"N/A" }}</td>
+                    {% endif %}
+                    <td>
+                        <div class="btn-group" role="group">
+                            {% if request.user.profile.role == 'IPS' %}
+                                {% if glosa.estado == 'Pendiente' or glosa.estado == 'Devuelta a IPS' %}
+                                    <a href="{% url 'auditoria:responder_glosa' glosa.id %}" 
+                                       class="btn btn-primary btn-sm">
+                                        Responder
+                                    </a>
+                                {% else %}
+                                    <button class="btn btn-secondary btn-sm" disabled>Respondida</button>
+                                {% endif %}
+                            {% elif request.user.profile.role == 'ET' or request.user.profile.role == 'AUDITOR' %}
+                                {% if glosa.estado == 'Respondida IPS' or glosa.estado == 'Devuelta a IPS' %}
+                                    <a href="{% url 'auditoria:decidir_respuesta_glosa' glosa.id %}" 
+                                       class="btn btn-warning btn-sm">
+                                        Decidir
+                                    </a>
+                                {% else %}
+                                    <button class="btn btn-secondary btn-sm" disabled>No Aplicable</button>
+                                {% endif %}
+                            {% endif %}
+                            
+                            <!-- Enlace al historial -->
+                            <a href="{% url 'auditoria:historial_glosa' glosa.id %}" 
+                               class="btn btn-info btn-sm" 
+                               title="Ver historial">
+                                <i class="bi bi-clock-history"></i>
+                            </a>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -61,7 +119,7 @@
     </div>
     {% else %}
     <div class="alert alert-info">
-        No hay glosas pendientes por responder en este momento.
+        No hay glosas pendientes para su rol en este momento.
     </div>
     {% endif %}
 </div>

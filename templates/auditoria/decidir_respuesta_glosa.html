@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}Decidir Respuesta de Glosa{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Decisión de la ET sobre Glosa #{{ glosa.id }}</h4>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Factura:</dt>
+                        <dd class="col-sm-8">{{ glosa.factura.numero }} (CUFE: {{ glosa.factura.cufe }})</dd>
+
+                        <dt class="col-sm-4">Valor Glosado:</dt>
+                        <dd class="col-sm-8">${{ glosa.valor_glosado|floatformat:2 }}</dd>
+
+                        <dt class="col-sm-4">Descripción Glosa:</dt>
+                        <dd class="col-sm-8">{{ glosa.descripcion }}</dd>
+
+                        <dt class="col-sm-4">Estado Actual:</dt>
+                        <dd class="col-sm-8"><span class="badge bg-warning">{{ glosa.get_estado_display }}</span></dd>
+
+                        <h5 class="mt-4">Respuesta de la IPS</h5>
+                        <dt class="col-sm-4">Fecha Respuesta IPS:</dt>
+                        <dd class="col-sm-8">{{ glosa.fecha_respuesta|date:"Y-m-d"|default:"N/A" }}</dd>
+
+                        <dt class="col-sm-4">IPS Aceptó Glosa:</dt>
+                        <dd class="col-sm-8">{% if glosa.aceptada %}Sí{% elif glosa.aceptada == False %}No{% else %}N/A{% endif %}</dd>
+
+                        <dt class="col-sm-4">Descripción Respuesta IPS:</dt>
+                        <dd class="col-sm-8">{{ glosa.descripcion_respuesta|default:"N/A" }}</dd>
+
+                        {% if glosa.archivo_soporte_respuesta %}
+                        <dt class="col-sm-4">Soporte Respuesta IPS:</dt>
+                        <dd class="col-sm-8"><a href="{{ glosa.archivo_soporte_respuesta.url }}" target="_blank">Ver Soporte</a></dd>
+                        {% endif %}
+                    </dl>
+
+                    <hr>
+
+                    <h5 class="mt-4">Tomar Decisión (ET/Auditor)</h5>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="decision_et" class="form-label">Decisión:</label>
+                            <select class="form-select" id="decision_et" name="decision_et" required>
+                                <option value="">Seleccione una opción</option>
+                                <option value="aceptar_respuesta_ips">Aceptar Respuesta de IPS (Levantar Glosa)</option>
+                                <option value="rechazar_respuesta_ips">Rechazar Respuesta de IPS (Glosa Definitiva)</option>
+                                <option value="devolver_a_ips">Devolver a IPS (Reevaluación)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="justificacion_et" class="form-label">Justificación de la Decisión (Opcional):</label>
+                            <textarea class="form-control" id="justificacion_et" name="justificacion_et" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="valor_aceptado_et" class="form-label">Valor Final Aceptado por ET (Solo si aplica):</label>
+                            <input type="number" class="form-control" id="valor_aceptado_et" name="valor_aceptado_et" step="0.01" placeholder="Ej: 0.00 para glosa levantada, o el valor final si es parcial">
+                            <small class="form-text text-muted">Deja en blanco si la decisión no implica un ajuste de valor.</small>
+                        </div>
+                        <button type="submit" class="btn btn-success">Guardar Decisión</button>
+                        <a href="{% url 'auditoria:glosas_pendientes' %}" class="btn btn-secondary">Cancelar</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

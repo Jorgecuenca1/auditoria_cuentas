@@ -387,6 +387,7 @@
         <th>Valor Glosado</th>
         <th>Estado</th>
         <th>Fecha Glosa</th>
+        <th>Acciones</th>
       </tr>
     </thead>
     <tbody>
@@ -430,6 +431,13 @@
         <td>${{ glosa.valor_glosado|floatformat:2 }}</td>
         <td>{{ glosa.estado }}</td>
         <td>{{ glosa.fecha_glosa|date:"Y-m-d" }}</td>
+        <td>
+            <a href="{% url 'auditoria:historial_glosa' glosa.id %}" 
+               class="btn btn-info btn-sm" 
+               title="Ver historial">
+                <i class="bi bi-clock-history"></i> Historial
+            </a>
+        </td>
       </tr>
     {% endfor %}
     </tbody>

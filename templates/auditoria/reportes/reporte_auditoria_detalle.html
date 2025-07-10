@@ -40,6 +40,12 @@
 
                 <dt class="col-sm-4">Tipo de Auditoría:</dt>
                 <dd class="col-sm-8">{{ factura.get_tipo_auditoria_display|default:"N/A" }}</dd>
+
+                <dt class="col-sm-4">Valor Glosado Definitivo:</dt>
+                <dd class="col-sm-8">${{ valor_total_glosado_definitivo|floatformat:2 }}</dd>
+
+                <dt class="col-sm-4">Valor Neto a Pagar:</dt>
+                <dd class="col-sm-8">${{ valor_neto_a_pagar|floatformat:2 }}</dd>
             </dl>
         </div>
     </div>
@@ -126,7 +132,7 @@
 
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-warning text-dark">
-            <h5 class="mb-0">Glosas y Respuestas</h5>
+            <h5 class="mb-0">Seguimiento Completo de Glosas</h5>
         </div>
         <div class="card-body">
             {% if glosas %}
@@ -134,45 +140,246 @@
                 <table class="table table-bordered table-hover align-middle table-sm">
                     <thead class="table-light">
                         <tr>
-                            <th>Fecha Glosa</th>
-                            <th>Tipo Glosa</th>
-                            <th>Subtipo Glosa</th>
-                            <th>Subcódigo Glosa</th>
-                            <th>Descripción Glosa</th>
-                            <th>Valor Glosado</th>
-                            <th>Estado</th>
+                            <th rowspan="2">Fecha Glosa</th>
+                            <th rowspan="2">Tipo Glosa</th>
+                            <th rowspan="2">Descripción Glosa</th>
+                            <th rowspan="2">Valor Glosado</th>
+                            <th rowspan="2">Estado Actual</th>
+                            <th colspan="4" class="text-center">Respuesta de la IPS</th>
+                            <th colspan="4" class="text-center">Decisión de la ET/Auditor</th>
+                            <th rowspan="2">Historial</th>
+                        </tr>
+                        <tr>
                             <th>Fecha Respuesta</th>
-                            <th>Tipo Respuesta</th>
-                            <th>Subtipo Respuesta</th>
+                            <th>IPS Aceptó</th>
                             <th>Descripción Respuesta</th>
-                            <th>Soporte Respuesta</th>
+                            <th>Soporte</th>
+                            <th>Fecha Decisión</th>
+                            <th>Decisión ET</th>
+                            <th>Valor Aceptado ET</th>
+                            <th>Justificación ET</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for glosa in glosas %}
                         <tr>
                             <td>{{ glosa.fecha_glosa|date:"Y-m-d" }}</td>
-                            <td>{{ glosa.tipo_glosa.nombre|default:"N/A" }}</td>
-                            <td>{{ glosa.subtipo_glosa.nombre|default:"N/A" }}</td>
-                            <td>{{ glosa.subcodigo_glosa.nombre|default:"N/A" }}</td>
+                            <td>
+                                {% if glosa.tipo_glosa %}
+                                    <strong>{{ glosa.tipo_glosa.codigo }}</strong><br>
+                                    <small>{{ glosa.tipo_glosa.nombre }}</small>
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
                             <td>{{ glosa.descripcion|default:"N/A" }}</td>
                             <td>${{ glosa.valor_glosado|floatformat:2 }}</td>
-                            <td>{{ glosa.estado|default:"N/A" }}</td>
+                            <td>
+                                {% if glosa.estado == 'Pendiente' %}
+                                    <span class="badge bg-warning">{{ glosa.get_estado_display }}</span>
+                                {% elif glosa.estado == 'Respondida IPS' %}
+                                    <span class="badge bg-info">{{ glosa.get_estado_display }}</span>
+                                {% elif glosa.estado == 'Aceptada ET' %}
+                                    <span class="badge bg-success">{{ glosa.get_estado_display }}</span>
+                                {% elif glosa.estado == 'Rechazada ET' %}
+                                    <span class="badge bg-danger">{{ glosa.get_estado_display }}</span>
+                                {% elif glosa.estado == 'Devuelta a IPS' %}
+                                    <span class="badge bg-secondary">{{ glosa.get_estado_display }}</span>
+                                {% else %}
+                                    <span class="badge bg-primary">{{ glosa.get_estado_display }}</span>
+                                {% endif %}
+                            </td>
+                            <!-- Respuesta de la IPS -->
                             <td>{{ glosa.fecha_respuesta|date:"Y-m-d"|default:"N/A" }}</td>
-                            <td>{{ glosa.tipo_glosa_respuesta.nombre|default:"N/A" }}</td>
-                            <td>{{ glosa.subtipo_glosa_respuesta.nombre|default:"N/A" }}</td>
-                            <td>{{ glosa.descripcion_respuesta|default:"N/A" }}</td>
+                            <td>
+                                {% if glosa.aceptada == True %}
+                                    <span class="badge bg-success">Sí</span>
+                                {% elif glosa.aceptada == False %}
+                                    <span class="badge bg-danger">No</span>
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if glosa.descripcion_respuesta %}
+                                    {{ glosa.descripcion_respuesta|truncatechars:50 }}
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 {% if glosa.archivo_soporte_respuesta %}
-                                <a href="{{ glosa.archivo_soporte_respuesta.url }}" target="_blank">Ver Soporte</a>
+                                    <a href="{{ glosa.archivo_soporte_respuesta.url }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-file-earmark-text"></i> Ver
+                                    </a>
                                 {% else %}
-                                N/A
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                            <!-- Decisión de la ET/Auditor -->
+                            <td>{{ glosa.fecha_decision_et|date:"Y-m-d"|default:"N/A" }}</td>
+                            <td>
+                                {% if glosa.estado == 'Aceptada ET' %}
+                                    <span class="badge bg-success">Aceptada</span>
+                                {% elif glosa.estado == 'Rechazada ET' %}
+                                    <span class="badge bg-danger">Rechazada</span>
+                                {% elif glosa.estado == 'Devuelta a IPS' %}
+                                    <span class="badge bg-warning">Devuelta</span>
+                                {% else %}
+                                    <span class="text-muted">Pendiente</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if glosa.valor_aceptado_et is not None %}
+                                    ${{ glosa.valor_aceptado_et|floatformat:2 }}
+                                    {% if glosa.valor_aceptado_et == 0 %}
+                                        <br><small class="text-success">Glosa Levantada</small>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if glosa.decision_et_justificacion %}
+                                    {{ glosa.decision_et_justificacion|truncatechars:50 }}
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                            <!-- Historial de la Glosa -->
+                            <td>
+                                {% if glosa.historial.all %}
+                                    <div class="dropdown">
+                                        <button class="btn btn-outline-info btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="bi bi-clock-history"></i> {{ glosa.historial.count }}
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end" style="min-width: 350px; max-width: 450px;">
+                                            <li class="dropdown-header">
+                                                <strong>Historial de Glosa #{{ glosa.id }}</strong>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            {% for registro in glosa.historial.all|slice:":8" %}
+                                                <li class="dropdown-item py-2">
+                                                    <div class="row">
+                                                        <div class="col-12">
+                                                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                                                <small class="text-muted">{{ registro.fecha_cambio|date:"d/m/Y H:i" }}</small>
+                                                                <span class="badge bg-secondary">{{ registro.get_accion_display }}</span>
+                                                            </div>
+                                                            {% if registro.usuario %}
+                                                                <div class="mb-1">
+                                                                    <small><i class="bi bi-person"></i> {{ registro.usuario.get_full_name|default:registro.usuario.username }}</small>
+                                                                </div>
+                                                            {% else %}
+                                                                <div class="mb-1">
+                                                                    <small><i class="bi bi-person"></i> <span class="text-muted">Sistema</span></small>
+                                                                </div>
+                                                            {% endif %}
+                                                            {% if registro.estado_anterior and registro.estado_nuevo %}
+                                                                <div class="mb-1">
+                                                                    <small class="badge bg-light text-dark">{{ registro.estado_anterior }}</small>
+                                                                    <i class="bi bi-arrow-right text-muted"></i>
+                                                                    <small class="badge bg-primary">{{ registro.estado_nuevo }}</small>
+                                                                </div>
+                                                            {% endif %}
+                                                            {% if registro.descripcion_cambio %}
+                                                                <div class="mb-1">
+                                                                    <small class="text-muted">{{ registro.descripcion_cambio|truncatechars:80 }}</small>
+                                                                </div>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                                {% if not forloop.last %}
+                                                    <li><hr class="dropdown-divider"></li>
+                                                {% endif %}
+                                            {% endfor %}
+                                            {% if glosa.historial.count > 8 %}
+                                                <li class="dropdown-item text-center py-2">
+                                                    <small class="text-muted">... y {{ glosa.historial.count|add:"-8" }} registros más</small>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                            {% endif %}
+                                            <li class="dropdown-item text-center py-2">
+                                                <a href="{% url 'auditoria:historial_glosa' glosa.id %}" class="btn btn-sm btn-primary">
+                                                    <i class="bi bi-arrow-right"></i> Ver Historial Completo
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">Sin historial</span>
                                 {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
+            
+            <!-- Resumen de Estados -->
+            <div class="row mt-4">
+                <div class="col-md-4">
+                    <h6>Resumen por Estado:</h6>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Pendientes
+                            <span class="badge bg-warning rounded-pill">{{ glosas|dictsort:"estado"|length }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Respondidas por IPS
+                            <span class="badge bg-info rounded-pill">{{ glosas|dictsort:"estado"|length }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Aceptadas por ET
+                            <span class="badge bg-success rounded-pill">{{ glosas|dictsort:"estado"|length }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Rechazadas por ET
+                            <span class="badge bg-danger rounded-pill">{{ glosas|dictsort:"estado"|length }}</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h6>Resumen Financiero:</h6>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Valor Total Glosado Original
+                            <span class="text-primary">${{ factura.valor_bruto|floatformat:2 }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Valor Definitivo Glosado
+                            <span class="text-success">${{ valor_total_glosado_definitivo|floatformat:2 }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Valor Neto a Pagar
+                            <span class="text-info">${{ valor_neto_a_pagar|floatformat:2 }}</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h6>Resumen del Historial:</h6>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Total Registros Historial
+                            <span class="badge bg-info rounded-pill">{{ total_historial }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Glosas con Historial
+                            <span class="badge bg-success rounded-pill">{{ glosas_con_historial }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Última Actividad
+                            <span class="text-muted">
+                                {% if ultima_actividad %}
+                                    {{ ultima_actividad|date:"d/m/Y" }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </span>
+                        </li>
+                    </ul>
+                </div>
             </div>
             {% else %}
             <p class="text-muted">No hay glosas registradas para esta factura.</p>

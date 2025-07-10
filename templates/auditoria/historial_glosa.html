@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+{% block title %}Historial de Glosa #{{ glosa.id }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-clock-history"></i> Historial de Glosa #{{ glosa.id }}</h2>
+                <a href="{% url 'auditoria:glosas_pendientes' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Volver a Glosas
+                </a>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Información de la Glosa -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Información de la Glosa</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4">Factura:</dt>
+                                <dd class="col-sm-8">{{ glosa.factura.numero }} (CUFE: {{ glosa.factura.cufe }})</dd>
+
+                                <dt class="col-sm-4">IPS:</dt>
+                                <dd class="col-sm-8">{{ glosa.ips.entidad_nombre|default:"N/A" }}</dd>
+
+                                <dt class="col-sm-4">Paciente:</dt>
+                                <dd class="col-sm-8">{{ glosa.paciente.numero_documento|default:"N/A" }}</dd>
+
+                                <dt class="col-sm-4">Valor Glosado:</dt>
+                                <dd class="col-sm-8">${{ glosa.valor_glosado|floatformat:2 }}</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4">Estado Actual:</dt>
+                                <dd class="col-sm-8">
+                                    {% if glosa.estado == 'Pendiente' %}
+                                        <span class="badge bg-warning">{{ glosa.get_estado_display }}</span>
+                                    {% elif glosa.estado == 'Respondida IPS' %}
+                                        <span class="badge bg-info">{{ glosa.get_estado_display }}</span>
+                                    {% elif glosa.estado == 'Aceptada ET' %}
+                                        <span class="badge bg-success">{{ glosa.get_estado_display }}</span>
+                                    {% elif glosa.estado == 'Rechazada ET' %}
+                                        <span class="badge bg-danger">{{ glosa.get_estado_display }}</span>
+                                    {% elif glosa.estado == 'Devuelta a IPS' %}
+                                        <span class="badge bg-secondary">{{ glosa.get_estado_display }}</span>
+                                    {% else %}
+                                        <span class="badge bg-primary">{{ glosa.get_estado_display }}</span>
+                                    {% endif %}
+                                </dd>
+
+                                <dt class="col-sm-4">Fecha Glosa:</dt>
+                                <dd class="col-sm-8">{{ glosa.fecha_glosa|date:"Y-m-d" }}</dd>
+
+                                <dt class="col-sm-4">Fecha Respuesta:</dt>
+                                <dd class="col-sm-8">{{ glosa.fecha_respuesta|date:"Y-m-d"|default:"N/A" }}</dd>
+
+                                <dt class="col-sm-4">Fecha Decisión ET:</dt>
+                                <dd class="col-sm-8">{{ glosa.fecha_decision_et|date:"Y-m-d"|default:"N/A" }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <dt>Descripción de la Glosa:</dt>
+                            <dd>{{ glosa.descripcion }}</dd>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historial de Cambios -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-list-ul"></i> Historial de Cambios</h5>
+                </div>
+                <div class="card-body">
+                    {% if historial %}
+                        <div class="timeline">
+                            {% for registro in historial %}
+                                <div class="timeline-item">
+                                    <div class="timeline-marker {% if forloop.first %}bg-primary{% else %}bg-secondary{% endif %}">
+                                        <i class="bi bi-circle-fill"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <div class="card">
+                                            <div class="card-header d-flex justify-content-between align-items-center">
+                                                <h6 class="mb-0">
+                                                    <i class="bi bi-{% if registro.accion == 'creada' %}plus-circle{% elif registro.accion == 'respondida_ips' %}chat-dots{% elif registro.accion == 'decidida_et' %}check-circle{% elif registro.accion == 'devuelta_ips' %}arrow-return-left{% else %}gear{% endif %}"></i>
+                                                    {{ registro.get_accion_display }}
+                                                </h6>
+                                                <small class="text-muted">{{ registro.fecha_cambio|date:"Y-m-d H:i" }}</small>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <strong>Usuario:</strong> 
+                                                        {% if registro.usuario %}
+                                                            {{ registro.usuario.get_full_name|default:registro.usuario.username }}
+                                                        {% else %}
+                                                            <span class="text-muted">Sistema</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <strong>IP:</strong> {{ registro.ip_address|default:"N/A" }}
+                                                    </div>
+                                                </div>
+                                                
+                                                {% if registro.estado_anterior or registro.estado_nuevo %}
+                                                    <div class="row mt-2">
+                                                        <div class="col-md-6">
+                                                            <strong>Estado Anterior:</strong> 
+                                                            {% if registro.estado_anterior %}
+                                                                <span class="badge bg-light text-dark">{{ registro.estado_anterior }}</span>
+                                                            {% else %}
+                                                                <span class="text-muted">N/A</span>
+                                                            {% endif %}
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <strong>Estado Nuevo:</strong> 
+                                                            {% if registro.estado_nuevo %}
+                                                                <span class="badge bg-primary">{{ registro.estado_nuevo }}</span>
+                                                            {% else %}
+                                                                <span class="text-muted">N/A</span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
+                                                
+                                                {% if registro.valor_anterior is not None or registro.valor_nuevo is not None %}
+                                                    <div class="row mt-2">
+                                                        <div class="col-md-6">
+                                                            <strong>Valor Anterior:</strong> 
+                                                            {% if registro.valor_anterior is not None %}
+                                                                ${{ registro.valor_anterior|floatformat:2 }}
+                                                            {% else %}
+                                                                <span class="text-muted">N/A</span>
+                                                            {% endif %}
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <strong>Valor Nuevo:</strong> 
+                                                            {% if registro.valor_nuevo is not None %}
+                                                                ${{ registro.valor_nuevo|floatformat:2 }}
+                                                            {% else %}
+                                                                <span class="text-muted">N/A</span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
+                                                
+                                                {% if registro.descripcion_cambio %}
+                                                    <div class="row mt-2">
+                                                        <div class="col-12">
+                                                            <strong>Descripción:</strong>
+                                                            <p class="mb-0 mt-1">{{ registro.descripcion_cambio }}</p>
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-inbox display-4"></i>
+                            <p class="mt-3">No hay registros en el historial de esta glosa.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 30px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -22px;
+    top: 10px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    z-index: 1;
+}
+
+.timeline-content {
+    margin-left: 20px;
+}
+
+.timeline-item:last-child .timeline-marker {
+    background-color: #28a745 !important;
+}
+</style>
+{% endblock %} 
