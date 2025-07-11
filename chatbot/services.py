@@ -1,6 +1,12 @@
 try:
     import google.generativeai as genai
-    GEMINI_AVAILABLE = True
+    # Verificar si GenerativeModel está disponible
+    if hasattr(genai, 'GenerativeModel'):
+        GEMINI_AVAILABLE = True
+        print("Google Generative AI disponible con GenerativeModel")
+    else:
+        GEMINI_AVAILABLE = False
+        print("Google Generative AI disponible pero sin GenerativeModel")
 except ImportError:
     GEMINI_AVAILABLE = False
     print("Warning: google-generativeai no está disponible")
@@ -12,14 +18,28 @@ import json
 
 class GeminiChatbotService:
     def __init__(self):
+        self.model = None
+        
         if not GEMINI_AVAILABLE:
             print("Error: google-generativeai no está disponible")
-            self.model = None
             return
             
         try:
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-            self.model = genai.GenerativeModel(settings.GEMINI_MODEL)
+            # Intentar diferentes métodos de configuración
+            if hasattr(genai, 'configure'):
+                genai.configure(api_key=settings.GEMINI_API_KEY)
+                print("Gemini configurado correctamente")
+            else:
+                print("Error: genai.configure no está disponible")
+                return
+                
+            if hasattr(genai, 'GenerativeModel'):
+                self.model = genai.GenerativeModel(settings.GEMINI_MODEL)
+                print(f"Modelo Gemini creado: {settings.GEMINI_MODEL}")
+            else:
+                print("Error: GenerativeModel no está disponible en esta versión")
+                return
+                
         except Exception as e:
             print(f"Error configurando Gemini: {str(e)}")
             self.model = None
