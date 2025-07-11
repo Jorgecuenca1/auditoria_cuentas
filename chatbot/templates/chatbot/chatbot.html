@@ -345,7 +345,8 @@ document.addEventListener('DOMContentLoaded', function() {
         showTyping();
 
         try {
-            const response = await fetch('{% url "chatbot:send_message" %}', {
+            // Usar URL relativa para evitar problemas de certificado
+            const response = await fetch('/chatbot/send-message/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -353,6 +354,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify({ message: message })
             });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
 
             const data = await response.json();
 
@@ -369,7 +374,15 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('Error:', error);
             hideTyping();
-            addMessage('Lo siento, hubo un error de conexión. Por favor intenta de nuevo.', false);
+            
+            // Mensaje de error más específico
+            if (error.message.includes('cert') || error.message.includes('SSL') || error.message.includes('HTTPS')) {
+                addMessage('Error de certificado SSL. Por favor contacta al administrador del sistema.', false);
+            } else if (error.message.includes('fetch')) {
+                addMessage('Error de conexión. Verifica tu conexión a internet e intenta de nuevo.', false);
+            } else {
+                addMessage('Lo siento, hubo un error de conexión. Por favor intenta de nuevo.', false);
+            }
         } finally {
             // Re-enable send button
             sendButton.disabled = false;

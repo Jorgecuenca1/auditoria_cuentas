@@ -1,4 +1,10 @@
-import google.generativeai as genai
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+    print("Warning: google-generativeai no está disponible")
+
 from django.conf import settings
 from typing import List, Dict, Optional
 import json
@@ -6,8 +12,17 @@ import json
 
 class GeminiChatbotService:
     def __init__(self):
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel(settings.GEMINI_MODEL)
+        if not GEMINI_AVAILABLE:
+            print("Error: google-generativeai no está disponible")
+            self.model = None
+            return
+            
+        try:
+            genai.configure(api_key=settings.GEMINI_API_KEY)
+            self.model = genai.GenerativeModel(settings.GEMINI_MODEL)
+        except Exception as e:
+            print(f"Error configurando Gemini: {str(e)}")
+            self.model = None
         
         # Base de conocimiento por rol
         self.knowledge_base = {
@@ -135,18 +150,24 @@ class GeminiChatbotService:
         indícalo amablemente y sugiere hacer preguntas relacionadas con el sistema.
         """
         
-        try:
-            # Generar respuesta con Gemini
-            print(f"Enviando prompt a Gemini: {prompt[:200]}...")
-            response = self.model.generate_content(prompt)
-            print(f"Respuesta de Gemini: {response.text[:200]}...")
-            return response.text
-        except Exception as e:
-            print(f"Error en Gemini: {str(e)}")
-            # Respuestas de fallback específicas por rol
-            if role == 'IPS':
-                if "manual" in message.lower() or "ayuda" in message.lower():
-                    return """**Manual de Usuario para IPS - Sistema de Auditoría de Cuentas Médicas**
+        # Verificar si el modelo está disponible
+        if not self.model:
+            print("Error en Servicio Gemini: Modelo no disponible")
+        else:
+            try:
+                # Generar respuesta con Gemini
+                print(f"Enviando prompt a Gemini: {prompt[:200]}...")
+                response = self.model.generate_content(prompt)
+                print(f"Respuesta de Gemini: {response.text[:200]}...")
+                return response.text
+            except Exception as e:
+                print(f"Error en Gemini: {str(e)}")
+        
+        # Si llegamos aquí, usar respuestas de fallback
+        # Respuestas de fallback específicas por rol
+        if role == 'IPS':
+            if "manual" in message.lower() or "ayuda" in message.lower():
+                return """**Manual de Usuario para IPS - Sistema de Auditoría de Cuentas Médicas**
 
 **1. Navegación Principal:**
 - **Radicados**: Ver todas las facturas radicadas para tu IPS
@@ -178,8 +199,8 @@ class GeminiChatbotService:
 - Tamaño máximo: 10MB por archivo
 
 ¿Te gustaría que profundice en algún tema específico?"""
-                elif "responder glosa" in message.lower():
-                    return """**Cómo Responder una Glosa - Paso a Paso:**
+            elif "responder glosa" in message.lower():
+                return """**Cómo Responder una Glosa - Paso a Paso:**
 
 1. **Accede a las Glosas:**
    - Ve al menú principal → "Glosas" → "Glosas Pendientes"
@@ -208,8 +229,8 @@ class GeminiChatbotService:
 - Responde dentro del plazo establecido
 
 ¿Necesitas ayuda con algún paso específico?"""
-                else:
-                    return """¡Hola! Soy tu asistente para el sistema de auditoría de cuentas médicas.
+            else:
+                return """¡Hola! Soy tu asistente para el sistema de auditoría de cuentas médicas.
 
 Como IPS, puedo ayudarte con:
 • **Responder glosas** y subir documentos de soporte
@@ -223,8 +244,8 @@ Como IPS, puedo ayudarte con:
 - "¿Dónde veo el manual de usuario?"
 - "¿Cómo subo documentos de soporte?"
 - "¿Cómo veo el historial de mis glosas?" """
-            else:
-                return f"Lo siento, estoy teniendo problemas técnicos. Por favor intenta de nuevo. Error: {str(e)}"
+        else:
+            return "Lo siento, estoy teniendo problemas técnicos. Por favor intenta de nuevo."
 
     def get_welcome_message(self, role: str) -> str:
         """
