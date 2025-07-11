@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'widget_tweaks',
     'crispy_forms',
     'crispy_bootstrap5',
+    'import_export',
     'accounts',
     'facturacion',
     'auditoria',
@@ -155,4 +156,4 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # Configuración de Gemini AI
 GEMINI_API_KEY = "AIzaSyDEZoqEpVXZIKRUSeIq1VEG4ei1imYDyKg"
-GEMINI_MODEL = "gemini-1.5-flash"
+GEMINI_MODEL = "gemini-2.0-flash"

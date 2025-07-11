@@ -1,6 +1,7 @@
 from django.db import models
 from accounts.models import Profile
 from django.conf import settings
+import uuid
 
 class Lote(models.Model):
     ESTADOS_LOTE = (
@@ -90,6 +91,7 @@ class Factura(models.Model):
         ('Hospitalizacion', 'Hospitalización'),
         ('Urgencias', 'Urgencias'),
     ]
+    codigo_uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, help_text="Código único automático de la factura")
     numero = models.CharField(max_length=50)
     cufe = models.CharField(max_length=150)
     fecha_emision = models.DateField()
@@ -107,7 +109,7 @@ class Factura(models.Model):
                                 related_name='facturas_auditadas', limit_choices_to={'profile__role': 'AUDITOR'})
     tipo_auditoria = models.CharField(max_length=20, choices=TIPO_AUDITORIA_CHOICES, null=True, blank=True, help_text="Tipo de auditoría para la factura")
     def __str__(self):
-        return f"Factura {self.numero} CUFE {self.cufe}"
+        return f"Factura {self.numero} (UUID: {self.codigo_uuid}) CUFE {self.cufe}"
 
 class UsuariosNoAptos(models.Model):
     cedula = models.CharField(max_length=20, unique=True, help_text="Número de cédula del usuario no apto")

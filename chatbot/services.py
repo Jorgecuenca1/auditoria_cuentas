@@ -1,48 +1,14 @@
-try:
-    import google.generativeai as genai
-    # Verificar si GenerativeModel está disponible
-    if hasattr(genai, 'GenerativeModel'):
-        GEMINI_AVAILABLE = True
-        print("Google Generative AI disponible con GenerativeModel")
-    else:
-        GEMINI_AVAILABLE = False
-        print("Google Generative AI disponible pero sin GenerativeModel")
-except ImportError:
-    GEMINI_AVAILABLE = False
-    print("Warning: google-generativeai no está disponible")
-
+import requests
+import json
 from django.conf import settings
 from typing import List, Dict, Optional
-import json
 
 
-class GeminiChatbotService:
+class OpenRouterChatbotService:
     def __init__(self):
-        self.model = None
-        
-        if not GEMINI_AVAILABLE:
-            print("Error: google-generativeai no está disponible")
-            return
-            
-        try:
-            # Intentar diferentes métodos de configuración
-            if hasattr(genai, 'configure'):
-                genai.configure(api_key=settings.GEMINI_API_KEY)
-                print("Gemini configurado correctamente")
-            else:
-                print("Error: genai.configure no está disponible")
-                return
-                
-            if hasattr(genai, 'GenerativeModel'):
-                self.model = genai.GenerativeModel(settings.GEMINI_MODEL)
-                print(f"Modelo Gemini creado: {settings.GEMINI_MODEL}")
-            else:
-                print("Error: GenerativeModel no está disponible en esta versión")
-                return
-                
-        except Exception as e:
-            print(f"Error configurando Gemini: {str(e)}")
-            self.model = None
+        self.api_key = "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"
+        self.api_url = "https://openrouter.ai/api/v1/chat/completions"
+        self.model = "anthropic/claude-3-haiku"  # Modelo gratuito de OpenRouter
         
         # Base de conocimiento por rol
         self.knowledge_base = {
@@ -141,7 +107,7 @@ class GeminiChatbotService:
 
     def get_response(self, message: str, role: str, conversation_history: Optional[List[Dict]] = None) -> str:
         """
-        Genera una respuesta usando Gemini basada en el rol del usuario y el historial de conversación
+        Genera una respuesta usando OpenRouter basada en el rol del usuario y el historial de conversación
         """
         if role not in self.knowledge_base:
             return "Lo siento, no tengo información específica para tu rol. Por favor contacta al administrador."
@@ -158,33 +124,63 @@ class GeminiChatbotService:
                 history_context += f"Asistente: {msg['response']}\n"
         
         # Construir el prompt completo
-        prompt = f"""
+        system_prompt = f"""
         {context}
         
         {history_context}
-        
-        Pregunta del usuario: {message}
         
         Responde de manera útil, clara y específica para el rol de {role}. 
         Si la pregunta no está relacionada con el sistema de auditoría de cuentas médicas, 
         indícalo amablemente y sugiere hacer preguntas relacionadas con el sistema.
         """
         
-        # Verificar si el modelo está disponible
-        if not self.model:
-            print("Error en Servicio Gemini: Modelo no disponible")
-        else:
-            try:
-                # Generar respuesta con Gemini
-                print(f"Enviando prompt a Gemini: {prompt[:200]}...")
-                response = self.model.generate_content(prompt)
-                print(f"Respuesta de Gemini: {response.text[:200]}...")
-                return response.text
-            except Exception as e:
-                print(f"Error en Gemini: {str(e)}")
-        
-        # Si llegamos aquí, usar respuestas de fallback
-        # Respuestas de fallback específicas por rol
+        try:
+            # Preparar la petición a OpenRouter
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "HTTP-Referer": "https://auditoria-cuentas.com",
+                "X-Title": "Sistema de Auditoría de Cuentas Médicas",
+                "Content-Type": "application/json"
+            }
+            
+            data = {
+                "model": self.model,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": system_prompt
+                    },
+                    {
+                        "role": "user",
+                        "content": message
+                    }
+                ],
+                "max_tokens": 1000,
+                "temperature": 0.7
+            }
+            
+            print(f"Enviando petición a OpenRouter con modelo {self.model}")
+            response = requests.post(
+                url=self.api_url,
+                headers=headers,
+                data=json.dumps(data)
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                ai_response = result['choices'][0]['message']['content']
+                print(f"Respuesta de OpenRouter: {ai_response[:200]}...")
+                return ai_response
+            else:
+                print(f"Error en OpenRouter API: {response.status_code} - {response.text}")
+                return self._get_fallback_response(message, role)
+                
+        except Exception as e:
+            print(f"Error en OpenRouter: {str(e)}")
+            return self._get_fallback_response(message, role)
+
+    def _get_fallback_response(self, message: str, role: str) -> str:
+        """Respuestas de fallback cuando la API no está disponible"""
         if role == 'IPS':
             if "manual" in message.lower() or "ayuda" in message.lower():
                 return """**Manual de Usuario para IPS - Sistema de Auditoría de Cuentas Médicas**
@@ -230,96 +226,178 @@ class GeminiChatbotService:
    - Haz clic en "Responder" en la glosa que quieres contestar
 
 3. **Completa la Respuesta:**
-   - **Respuesta**: Explica detalladamente por qué no estás de acuerdo con la glosa
-   - **Documentos**: Sube evidencia que respalde tu respuesta (opcional)
-   - **Justificación**: Incluye fundamentos técnicos o normativos
+   - Explica detalladamente por qué no estás de acuerdo con la glosa
+   - Adjunta documentos de soporte si los tienes
+   - Incluye justificación técnica y legal
 
-4. **Enviar:**
+4. **Enviar Respuesta:**
    - Revisa que toda la información esté completa
    - Haz clic en "Enviar Respuesta"
 
-5. **Seguimiento:**
-   - La ET revisará tu respuesta y tomará una decisión
-   - Puedes ver el estado en el historial de la glosa
-
-**Consejos:**
-- Sé específico y técnico en tu respuesta
-- Incluye referencias normativas cuando sea posible
-- Adjunta documentos que respalden tu posición
+**Consejos importantes:**
+- Sé específico y detallado en tu respuesta
+- Incluye referencias a normativas si aplica
+- Adjunta toda la documentación de soporte disponible
 - Responde dentro del plazo establecido
 
 ¿Necesitas ayuda con algún paso específico?"""
             else:
-                return """¡Hola! Soy tu asistente para el sistema de auditoría de cuentas médicas.
+                return "Hola! Soy tu asistente para el sistema de auditoría de cuentas médicas. Como IPS, puedo ayudarte con:\n\n- Responder glosas\n- Ver estado de facturas\n- Subir documentos\n- Acceder a reportes\n- Ver historial de glosas\n\n¿En qué puedo ayudarte hoy?"
 
-Como IPS, puedo ayudarte con:
-• **Responder glosas** y subir documentos de soporte
-• **Ver el estado** de tus facturas y glosas  
-• **Acceder al historial** de tus glosas
-• **Manejar devoluciones** de facturas
-• **Generar reportes** específicos de tu IPS
+        elif role == 'ET':
+            if "crear glosa" in message.lower():
+                return """**Cómo Crear una Glosa - Paso a Paso:**
 
-¿Qué te gustaría saber? Puedes preguntarme sobre:
-- "¿Cómo respondo una glosa?"
-- "¿Dónde veo el manual de usuario?"
-- "¿Cómo subo documentos de soporte?"
-- "¿Cómo veo el historial de mis glosas?" """
-        else:
-            return "Lo siento, estoy teniendo problemas técnicos. Por favor intenta de nuevo."
+1. **Accede a la Auditoría:**
+   - Ve al menú principal → "Auditoría" → "Radicados"
+
+2. **Selecciona la Factura:**
+   - Busca la factura que quieres auditar
+   - Haz clic en "Auditar Factura"
+
+3. **Revisa los Detalles:**
+   - Revisa todos los servicios facturados
+   - Identifica los items que requieren glosa
+
+4. **Crear Glosa:**
+   - Haz clic en "Crear Glosa" en el item específico
+   - Selecciona el tipo de glosa
+   - Completa la justificación
+   - Adjunta documentos de soporte si es necesario
+
+5. **Guardar Glosa:**
+   - Revisa que toda la información esté correcta
+   - Haz clic en "Guardar Glosa"
+
+**Tipos de Glosas Disponibles:**
+- **Técnica**: Problemas con códigos, descripciones, etc.
+- **Administrativa**: Documentación faltante o incorrecta
+- **Económica**: Valores no autorizados o incorrectos
+
+¿Necesitas ayuda con algún paso específico?"""
+            else:
+                return "Hola! Soy tu asistente para el sistema de auditoría de cuentas médicas. Como ET, puedo ayudarte con:\n\n- Crear glosas\n- Auditar facturas\n- Decidir sobre respuestas de IPS\n- Generar reportes\n- Devolver facturas\n\n¿En qué puedo ayudarte hoy?"
+
+        elif role == 'AUDITOR':
+            return "Hola! Soy tu asistente para el sistema de auditoría de cuentas médicas. Como Auditor, puedo ayudarte con:\n\n- Realizar auditorías completas\n- Revisar glosas y respuestas\n- Generar reportes detallados\n- Analizar historiales\n- Finalizar auditorías\n\n¿En qué puedo ayudarte hoy?"
+
+        elif role == 'EPS':
+            return "Hola! Soy tu asistente para el sistema de auditoría de cuentas médicas. Como EPS, puedo ayudarte con:\n\n- Revisar estado de facturas\n- Ver resultados de auditorías\n- Acceder a reportes\n- Interpretar glosas\n- Gestionar cartera\n\n¿En qué puedo ayudarte hoy?"
+
+        return "Hola! Soy tu asistente para el sistema de auditoría de cuentas médicas. ¿En qué puedo ayudarte hoy?"
 
     def get_welcome_message(self, role: str) -> str:
-        """
-        Genera un mensaje de bienvenida personalizado para cada rol
-        """
-        welcome_messages = {
-            'IPS': """
-            ¡Hola! Soy tu asistente virtual especializado en el sistema de auditoría de cuentas médicas para IPS.
-            
-            Puedo ayudarte con:
-            • Responder glosas y subir documentos de soporte
-            • Ver el estado de tus facturas y glosas
-            • Interpretar decisiones de la ET
-            • Acceder al historial de tus glosas
-            • Manejar devoluciones de facturas
-            
-            ¿En qué puedo ayudarte hoy?
-            """,
-            'ET': """
-            ¡Hola! Soy tu asistente virtual especializado en el sistema de auditoría de cuentas médicas para Entidades Territoriales.
-            
-            Puedo ayudarte con:
-            • Crear y gestionar glosas
-            • Decidir sobre respuestas de IPS
-            • Generar reportes de auditoría
-            • Devolver facturas cuando sea necesario
-            • Analizar el historial completo de glosas
-            
-            ¿En qué puedo ayudarte hoy?
-            """,
-            'AUDITOR': """
-            ¡Hola! Soy tu asistente virtual especializado en el sistema de auditoría de cuentas médicas para auditores.
-            
-            Puedo ayudarte con:
-            • Realizar auditorías completas
-            • Revisar glosas y su historial
-            • Generar reportes detallados
-            • Finalizar auditorías
-            • Analizar datos de auditoría
-            
-            ¿En qué puedo ayudarte hoy?
-            """,
-            'EPS': """
-            ¡Hola! Soy tu asistente virtual especializado en el sistema de auditoría de cuentas médicas para EPS.
-            
-            Puedo ayudarte con:
-            • Revisar el estado de facturas
-            • Acceder a reportes de auditoría
-            • Interpretar resultados de auditoría
-            • Ver el historial de glosas
-            • Gestionar cartera y pagos
-            
-            ¿En qué puedo ayudarte hoy?
-            """
-        }
+        """Genera un mensaje de bienvenida personalizado según el rol"""
+        if role == 'IPS':
+            return """¡Hola! 👋 Soy tu asistente virtual especializado en el sistema de auditoría de cuentas médicas.
+
+Como **IPS**, puedo ayudarte con:
+
+🔍 **Consultas sobre Glosas:**
+- Cómo responder glosas de manera efectiva
+- Qué documentos subir como soporte
+- Cómo interpretar las decisiones de la ET
+
+📊 **Estado de Facturas:**
+- Ver el estado actual de tus facturas
+- Entender los diferentes estados del proceso
+- Acceder al historial completo
+
+📋 **Procesos y Procedimientos:**
+- Guías paso a paso para cada proceso
+- Mejores prácticas para responder glosas
+- Cómo manejar devoluciones
+
+💡 **Consejos y Recomendaciones:**
+- Optimizar tus respuestas a glosas
+- Documentación recomendada
+- Plazos y tiempos importantes
+
+¿En qué puedo ayudarte hoy? Puedes preguntarme sobre cualquier aspecto del sistema de auditoría."""
         
-        return welcome_messages.get(role, "¡Hola! Soy tu asistente virtual. ¿En qué puedo ayudarte?") 
+        elif role == 'ET':
+            return """¡Hola! 👋 Soy tu asistente virtual especializado en el sistema de auditoría de cuentas médicas.
+
+Como **ET**, puedo ayudarte con:
+
+🔍 **Auditoría de Facturas:**
+- Cómo realizar auditorías efectivas
+- Crear glosas con justificación técnica
+- Revisar respuestas de IPS
+
+📊 **Gestión de Glosas:**
+- Decidir sobre respuestas de IPS
+- Aprobar o rechazar justificaciones
+- Gestionar el flujo de glosas
+
+📋 **Reportes y Análisis:**
+- Generar reportes de auditoría
+- Analizar tendencias y estadísticas
+- Exportar datos para análisis
+
+⚖️ **Control y Verificación:**
+- Devolver facturas cuando sea necesario
+- Establecer criterios de auditoría
+- Mantener estándares de calidad
+
+¿En qué puedo ayudarte hoy? Puedes preguntarme sobre cualquier aspecto del proceso de auditoría."""
+        
+        elif role == 'AUDITOR':
+            return """¡Hola! 👋 Soy tu asistente virtual especializado en el sistema de auditoría de cuentas médicas.
+
+Como **Auditor**, puedo ayudarte con:
+
+🔍 **Auditorías Completas:**
+- Procesos de auditoría paso a paso
+- Revisión exhaustiva de facturas
+- Análisis de documentación
+
+📊 **Gestión de Glosas:**
+- Crear glosas técnicas y administrativas
+- Revisar respuestas de IPS
+- Tomar decisiones informadas
+
+📋 **Reportes Detallados:**
+- Generar reportes de auditoría
+- Analizar historiales completos
+- Documentar hallazgos
+
+⚖️ **Control de Calidad:**
+- Verificar cumplimiento normativo
+- Establecer criterios de auditoría
+- Finalizar auditorías correctamente
+
+¿En qué puedo ayudarte hoy? Puedes preguntarme sobre cualquier aspecto técnico del proceso de auditoría."""
+        
+        elif role == 'EPS':
+            return """¡Hola! 👋 Soy tu asistente virtual especializado en el sistema de auditoría de cuentas médicas.
+
+Como **EPS**, puedo ayudarte con:
+
+🔍 **Seguimiento de Facturas:**
+- Ver el estado actual de tus facturas
+- Revisar resultados de auditorías
+- Monitorear el proceso de glosas
+
+📊 **Reportes y Análisis:**
+- Acceder a reportes de auditoría
+- Interpretar resultados y estadísticas
+- Analizar tendencias de glosas
+
+📋 **Gestión de Cartera:**
+- Calcular cartera actual
+- Proyectar pagos futuros
+- Analizar impacto de glosas
+
+💼 **Toma de Decisiones:**
+- Basar decisiones en datos de auditoría
+- Optimizar procesos de pago
+- Gestionar relaciones con IPS
+
+¿En qué puedo ayudarte hoy? Puedes preguntarme sobre cualquier aspecto de la gestión de facturas y auditorías."""
+
+        return "¡Hola! 👋 Soy tu asistente virtual para el sistema de auditoría de cuentas médicas. ¿En qué puedo ayudarte hoy?"
+
+
+# Instancia global del servicio
+chatbot_service = OpenRouterChatbotService() 

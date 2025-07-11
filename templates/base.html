@@ -41,24 +41,10 @@
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <!-- Facturación -->
                 {% if user.profile.role == 'IPS' %}
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-file-text"></i> Facturación
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'facturacion:radicar_factura' %}">
+                        <i class="bi bi-file-plus"></i> Radicar Factura
                     </a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'facturacion:radicar_factura' %}">
-                            <i class="bi bi-file-plus"></i> Radicar Factura
-                        </a></li>
-                        <li><a class="dropdown-item" href="{% url 'facturacion:lote_list' %}">
-                            <i class="bi bi-inbox"></i> Lotes de Facturas
-                        </a></li>
-                        <li><a class="dropdown-item" href="{% url 'facturacion:contrato_list' %}">
-                            <i class="bi bi-journal-text"></i> Gestión de Contratos
-                        </a></li>
-                        <li><a class="dropdown-item" href="{% url 'facturacion:resolucion_list' %}">
-                            <i class="bi bi-file-earmark-ruled"></i> Gestión de Resoluciones
-                        </a></li>
-                    </ul>
                 </li>
                 {% endif %}
 

@@ -1,9 +1,24 @@
 from django.contrib import admin
+from import_export import resources
+from import_export.admin import ImportExportModelAdmin
 from .models import ChatSession, ChatMessage
 
+# Resources para import/export
+class ChatSessionResource(resources.ModelResource):
+    class Meta:
+        model = ChatSession
+        import_id_fields = ('id',)
+        fields = ('id', 'user', 'role', 'created_at', 'updated_at', 'is_active')
+
+class ChatMessageResource(resources.ModelResource):
+    class Meta:
+        model = ChatMessage
+        import_id_fields = ('id',)
+        fields = ('id', 'session', 'is_user_message', 'message', 'response', 'timestamp')
 
 @admin.register(ChatSession)
-class ChatSessionAdmin(admin.ModelAdmin):
+class ChatSessionAdmin(ImportExportModelAdmin):
+    resource_class = ChatSessionResource
     list_display = ['id', 'user', 'role', 'created_at', 'updated_at', 'is_active', 'message_count']
     list_filter = ['role', 'is_active', 'created_at']
     search_fields = ['user__username', 'user__email']
@@ -16,7 +31,8 @@ class ChatSessionAdmin(admin.ModelAdmin):
 
 
 @admin.register(ChatMessage)
-class ChatMessageAdmin(admin.ModelAdmin):
+class ChatMessageAdmin(ImportExportModelAdmin):
+    resource_class = ChatMessageResource
     list_display = ['id', 'session', 'is_user_message', 'message_preview', 'response_preview', 'timestamp']
     list_filter = ['is_user_message', 'timestamp', 'session__role']
     search_fields = ['message', 'response', 'session__user__username']

@@ -5,7 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from accounts.decorators import role_required
 from .models import ChatSession, ChatMessage
-from .services import GeminiChatbotService
+from .services import OpenRouterChatbotService
 import json
 
 
@@ -26,7 +26,7 @@ def chatbot_view(request):
     
     # Si se creó una nueva sesión, enviar mensaje de bienvenida
     if created:
-        chatbot_service = GeminiChatbotService()
+        chatbot_service = OpenRouterChatbotService()
         welcome_message = chatbot_service.get_welcome_message(user_role)
         
         # Crear mensaje de bienvenida
@@ -81,12 +81,12 @@ def send_message(request):
                 'is_user_message': msg.is_user_message
             })
         
-        # Generar respuesta con Gemini
+        # Generar respuesta con OpenRouter
         try:
-            chatbot_service = GeminiChatbotService()
+            chatbot_service = OpenRouterChatbotService()
             response = chatbot_service.get_response(message, user_role, conversation_history)
         except Exception as e:
-            print(f"Error en Gemini service: {str(e)}")
+            print(f"Error en OpenRouter service: {str(e)}")
             response = "Lo siento, estoy teniendo problemas técnicos en este momento. Por favor intenta de nuevo en unos minutos."
         
         # Guardar mensaje del usuario
@@ -157,7 +157,7 @@ def start_new_chat(request):
     )
     
     # Enviar mensaje de bienvenida
-    chatbot_service = GeminiChatbotService()
+    chatbot_service = OpenRouterChatbotService()
     welcome_message = chatbot_service.get_welcome_message(user_role)
     
     ChatMessage.objects.create(
