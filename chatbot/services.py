@@ -1,6 +1,6 @@
 import google.generativeai as genai
 from django.conf import settings
-from typing import List, Dict
+from typing import List, Dict, Optional
 import json
 
 
@@ -104,7 +104,7 @@ class GeminiChatbotService:
             }
         }
 
-    def get_response(self, message: str, role: str, conversation_history: List[Dict] = None) -> str:
+    def get_response(self, message: str, role: str, conversation_history: Optional[List[Dict]] = None) -> str:
         """
         Genera una respuesta usando Gemini basada en el rol del usuario y el historial de conversación
         """
@@ -143,20 +143,86 @@ class GeminiChatbotService:
             return response.text
         except Exception as e:
             print(f"Error en Gemini: {str(e)}")
-            # Respuesta de fallback
-            if "responder glosa" in message.lower():
-                return """Para responder una glosa en el sistema:
+            # Respuestas de fallback específicas por rol
+            if role == 'IPS':
+                if "manual" in message.lower() or "ayuda" in message.lower():
+                    return """**Manual de Usuario para IPS - Sistema de Auditoría de Cuentas Médicas**
 
-1. Ve a la sección "Glosas" en el menú principal
-2. Busca la glosa que quieres responder en la lista
-3. Haz clic en el botón "Responder" 
+**1. Navegación Principal:**
+- **Radicados**: Ver todas las facturas radicadas para tu IPS
+- **Glosas**: Gestionar glosas recibidas y respuestas
+- **Devoluciones**: Ver facturas devueltas por la ET
+- **Reportes**: Acceder a reportes específicos de tu IPS
+
+**2. Responder Glosas:**
+1. Ve a "Glosas" → "Glosas Pendientes"
+2. Busca la glosa que quieres responder
+3. Haz clic en "Responder"
 4. Completa el formulario con:
-   - Tu respuesta a la glosa
-   - Documentos de soporte (si los tienes)
-   - Justificación de tu respuesta
+   - Respuesta detallada a la glosa
+   - Documentos de soporte (opcional)
+   - Justificación técnica
 5. Haz clic en "Enviar Respuesta"
 
-¿Te gustaría que te ayude con algún paso específico?"""
+**3. Ver Estado de Facturas:**
+- Ve a "Radicados" para ver el estado de todas tus facturas
+- Los estados posibles son: Radicada, En Auditoría, Con Glosas, Aprobada, Devuelta
+
+**4. Historial de Glosas:**
+- En cada glosa puedes ver el historial completo de cambios
+- Haz clic en el ícono de historial para ver todos los movimientos
+
+**5. Documentos de Soporte:**
+- Puedes subir documentos al responder glosas
+- Formatos aceptados: PDF, JPG, PNG
+- Tamaño máximo: 10MB por archivo
+
+¿Te gustaría que profundice en algún tema específico?"""
+                elif "responder glosa" in message.lower():
+                    return """**Cómo Responder una Glosa - Paso a Paso:**
+
+1. **Accede a las Glosas:**
+   - Ve al menú principal → "Glosas" → "Glosas Pendientes"
+
+2. **Encuentra la Glosa:**
+   - Usa los filtros para buscar por número de factura, fecha, etc.
+   - Haz clic en "Responder" en la glosa que quieres contestar
+
+3. **Completa la Respuesta:**
+   - **Respuesta**: Explica detalladamente por qué no estás de acuerdo con la glosa
+   - **Documentos**: Sube evidencia que respalde tu respuesta (opcional)
+   - **Justificación**: Incluye fundamentos técnicos o normativos
+
+4. **Enviar:**
+   - Revisa que toda la información esté completa
+   - Haz clic en "Enviar Respuesta"
+
+5. **Seguimiento:**
+   - La ET revisará tu respuesta y tomará una decisión
+   - Puedes ver el estado en el historial de la glosa
+
+**Consejos:**
+- Sé específico y técnico en tu respuesta
+- Incluye referencias normativas cuando sea posible
+- Adjunta documentos que respalden tu posición
+- Responde dentro del plazo establecido
+
+¿Necesitas ayuda con algún paso específico?"""
+                else:
+                    return """¡Hola! Soy tu asistente para el sistema de auditoría de cuentas médicas.
+
+Como IPS, puedo ayudarte con:
+• **Responder glosas** y subir documentos de soporte
+• **Ver el estado** de tus facturas y glosas  
+• **Acceder al historial** de tus glosas
+• **Manejar devoluciones** de facturas
+• **Generar reportes** específicos de tu IPS
+
+¿Qué te gustaría saber? Puedes preguntarme sobre:
+- "¿Cómo respondo una glosa?"
+- "¿Dónde veo el manual de usuario?"
+- "¿Cómo subo documentos de soporte?"
+- "¿Cómo veo el historial de mis glosas?" """
             else:
                 return f"Lo siento, estoy teniendo problemas técnicos. Por favor intenta de nuevo. Error: {str(e)}"
 
