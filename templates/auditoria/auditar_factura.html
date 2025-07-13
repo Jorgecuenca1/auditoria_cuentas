@@ -67,6 +67,65 @@
     </div>
 </div>
 
+{# Sección de Glosa General #}
+{% if factura.estado != 'Auditada' %}
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0">Crear Glosa General de la Factura</h5>
+    </div>
+    <div class="card-body">
+        <p class="text-muted mb-3">
+            <i class="bi bi-info-circle"></i> 
+            Esta glosa se aplicará a toda la factura y no estará asociada a un ítem RIPS específico.
+        </p>
+        <form method="post" class="row g-3">
+            {% csrf_token %}
+            <input type="hidden" name="item_type" value="general">
+            
+            <div class="col-md-4">
+                <label for="tipo_glosa_general" class="form-label">Tipo de Glosa:</label>
+                <select name="tipo_glosa" id="tipo_glosa_general" class="form-select" required>
+                    <option value="">Seleccione Tipo</option>
+                    {% for tipo in tipos_glosa %}
+                        <option value="{{ tipo.id }}">{{ tipo.codigo }} - {{ tipo.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-4">
+                <label for="subtipo_glosa_general" class="form-label">Subtipo de Glosa:</label>
+                <select name="subtipo_glosa" id="subtipo_glosa_general" class="form-select" required>
+                    <option value="">Seleccione Subtipo</option>
+                </select>
+            </div>
+            
+            <div class="col-md-4">
+                <label for="subcodigo_glosa_general" class="form-label">Subcódigo de Glosa:</label>
+                <select name="subcodigo_glosa" id="subcodigo_glosa_general" class="form-select" required>
+                    <option value="">Seleccione Subcódigo</option>
+                </select>
+            </div>
+            
+            <div class="col-md-8">
+                <label for="descripcion_general" class="form-label">Descripción de la Glosa:</label>
+                <textarea name="descripcion" id="descripcion_general" class="form-control" rows="3" required placeholder="Describa la glosa general de la factura..."></textarea>
+            </div>
+            
+            <div class="col-md-4">
+                <label for="valor_glosado_general" class="form-label">Valor Glosado:</label>
+                <input type="number" name="valor_glosado" id="valor_glosado_general" class="form-control" step="0.01" min="0" required>
+            </div>
+            
+            <div class="col-12">
+                <button type="submit" class="btn btn-warning">
+                    <i class="bi bi-exclamation-triangle"></i> Crear Glosa General
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 <h3 class="mt-5 mb-3">Detalle de RIPS</h3>
 
 {# Sección de Consultas #}
@@ -406,7 +465,7 @@
           {% elif glosa.otro_servicio %}
             Otro Servicio: {{ glosa.otro_servicio.nom_tecnologia_salud }} ({{ glosa.otro_servicio.cod_tecnologia_salud }})
           {% else %}
-            N/A
+            <span class="badge bg-warning text-dark">GLOSA GENERAL</span>
           {% endif %}
         </td>
         <td>
@@ -415,7 +474,7 @@
           {% elif glosa.procedimiento %}Procedimiento
           {% elif glosa.hospitalizacion %}Hospitalización
           {% elif glosa.otro_servicio %}Otro Servicio
-          {% else %}General
+          {% else %}<span class="badge bg-warning text-dark">General</span>
           {% endif %}
         </td>
         <td>

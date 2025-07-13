@@ -20,6 +20,7 @@
             <thead>
                 <tr>
                     <th>Factura</th>
+                    <th>Ítem Glosado</th>
                     <th>Tipo</th>
                     <th>Subtipo</th>
                     <th>Subcódigo</th>
@@ -54,6 +55,21 @@
                         {% else %}
                             {{ glosa.factura.numero }}
                         {% endif %}
+                    </td>
+                    <td>
+                      {% if glosa.consulta %}
+                        <small class="text-muted">Consulta:</small><br>{{ glosa.consulta.cod_consulta }}
+                      {% elif glosa.medicamento %}
+                        <small class="text-muted">Medicamento:</small><br>{{ glosa.medicamento.cod_tecnologia_salud }}
+                      {% elif glosa.procedimiento %}
+                        <small class="text-muted">Procedimiento:</small><br>{{ glosa.procedimiento.cod_procedimiento }}
+                      {% elif glosa.hospitalizacion %}
+                        <small class="text-muted">Hospitalización:</small><br>{{ glosa.hospitalizacion.fecha_inicio_atencion|date:"Y-m-d" }}
+                      {% elif glosa.otro_servicio %}
+                        <small class="text-muted">Otro Servicio:</small><br>{{ glosa.otro_servicio.cod_tecnologia_salud }}
+                      {% else %}
+                        <span class="badge bg-warning text-dark">GLOSA GENERAL</span>
+                      {% endif %}
                     </td>
                     <td>
                       {% if glosa.tipo_glosa %}

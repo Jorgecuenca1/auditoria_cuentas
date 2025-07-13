@@ -103,9 +103,20 @@ class CuentaCartera(models.Model):
         )
         self.valor_glosado_provisional = sum(g.valor_glosado for g in glosas_provisionales) or Decimal('0')
         
-        # Calcular glosas definitivas (aceptadas por ET = se descuentan del valor bruto)
-        glosas_definitivas = glosas.filter(estado='Rechazada ET')  # Rechazada ET = glosa válida, se descuenta
-        self.valor_glosado_definitivo = sum(g.valor_aceptado_et or g.valor_glosado for g in glosas_definitivas) or Decimal('0')
+        # Calcular glosas definitivas (con decisión final de ET)
+        glosas_definitivas = glosas.filter(estado__in=['Aceptada ET', 'Rechazada ET'])
+        
+        valor_definitivo = Decimal('0')
+        for glosa in glosas_definitivas:
+            if glosa.estado == 'Rechazada ET':
+                # ET rechaza respuesta IPS = glosa válida, se descuenta valor completo
+                valor_definitivo += glosa.valor_glosado
+            elif glosa.estado == 'Aceptada ET':
+                # ET acepta respuesta IPS = se descuenta solo valor_aceptado_et
+                # Si valor_aceptado_et es 0, la glosa se levanta (no se descuenta)
+                valor_definitivo += glosa.valor_aceptado_et or Decimal('0')
+        
+        self.valor_glosado_definitivo = valor_definitivo
         
         # Actualizar valor pagable
         self.valor_pagable = self.valor_inicial - self.valor_glosado_definitivo

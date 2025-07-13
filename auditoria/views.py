@@ -242,7 +242,13 @@ def auditar_factura(request, factura_id):
                 'subcodigo_glosa_id': subcodigo_glosa_id,
             }
             related_item = None
-            if item_type == 'consulta' and item_pk:
+            
+            # Manejar glosas generales (sin item_type o item_type == 'general')
+            if not item_type or item_type == 'general':
+                # Glosa general de la factura - no se asocia a ningún ítem RIPS específico
+                glosa_kwargs['paciente'] = factura.paciente  # Usar paciente de la factura si existe
+                messages.info(request, "Glosa general creada para toda la factura.")
+            elif item_type == 'consulta' and item_pk:
                 related_item = get_object_or_404(RipsConsulta, pk=item_pk)
                 glosa_kwargs['consulta'] = related_item
             elif item_type == 'medicamento' and item_pk:
@@ -257,10 +263,11 @@ def auditar_factura(request, factura_id):
             elif item_type == 'otro_servicio' and item_pk:
                 related_item = get_object_or_404(RipsOtroServicio, pk=item_pk)
                 glosa_kwargs['otro_servicio'] = related_item
+            
+            # Para glosas específicas de ítems RIPS, asociar el paciente del ítem
             if related_item and hasattr(related_item, 'paciente'):
                 glosa_kwargs['paciente'] = related_item.paciente
-            else:
-                messages.warning(request, "Glosa creada sin asociación a un ítem RIPS específico o paciente.")
+            
             # Asignar la IPS de la factura a la glosa
             glosa_kwargs['ips'] = factura.ips
             glosa = Glosa.objects.create(**glosa_kwargs)
