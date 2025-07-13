@@ -478,16 +478,16 @@ def decidir_respuesta_glosa(request, glosa_id):
 
         if decision_et == 'aceptar_respuesta_ips':
             glosa.estado = 'Aceptada ET'
-            glosa.valor_aceptado_et = Decimal('0.00') # La glosa se levanta completamente (el valor glosado se acepta pagar)
+            glosa.valor_aceptado_et = Decimal('0.00') # ET acepta el rechazo de IPS, glosa se levanta, NO se descuenta del valor bruto
             accion_historial = 'decidida_et'
-            descripcion_historial = "Respuesta de la IPS aceptada. Glosa levantada completamente."
-            messages.success(request, "Respuesta de la IPS aceptada. Glosa levantada.")
+            descripcion_historial = "Respuesta de la IPS aceptada. Glosa levantada, se debe pagar."
+            messages.success(request, "Respuesta de la IPS aceptada. Glosa levantada, se debe pagar.")
         elif decision_et == 'rechazar_respuesta_ips':
             glosa.estado = 'Rechazada ET'
-            glosa.valor_aceptado_et = glosa.valor_glosado # La glosa se mantiene (el valor glosado no se paga)
+            glosa.valor_aceptado_et = glosa.valor_glosado # ET rechaza el rechazo de IPS, glosa sigue válida, SÍ se descuenta del valor bruto
             accion_historial = 'decidida_et'
-            descripcion_historial = "Respuesta de la IPS rechazada. Glosa queda definitiva."
-            messages.warning(request, "Respuesta de la IPS rechazada. Glosa queda definitiva.")
+            descripcion_historial = "Respuesta de la IPS rechazada. Glosa válida, se descuenta del valor bruto."
+            messages.warning(request, "Respuesta de la IPS rechazada. Glosa válida, se descuenta del valor bruto.")
         elif decision_et == 'devolver_a_ips':
             glosa.estado = 'Devuelta a IPS'
             glosa.valor_aceptado_et = None # Se reinicia el proceso de aceptación/rechazo
@@ -509,6 +509,29 @@ def decidir_respuesta_glosa(request, glosa_id):
         glosa.decision_et_justificacion = justificacion_et
         
         glosa.save()
+        
+        # Actualizar la cuenta de cartera después de la decisión
+        try:
+            cuenta_cartera = glosa.factura.cuentacartera
+            cuenta_cartera.actualizar_valores_glosas()
+        except Exception as e:
+            # Si hay error, crear cuenta de cartera básica
+            from cartera.models import CuentaCartera
+            CuentaCartera.objects.get_or_create(
+                factura=glosa.factura,
+                defaults={
+                    'ips': glosa.factura.ips,
+                    'eps': glosa.factura.eps,
+                    'valor_inicial': glosa.factura.valor_bruto,
+                    'valor_glosado_provisional': Decimal('0'),
+                    'valor_glosado_definitivo': Decimal('0'),
+                    'valor_pagable': glosa.factura.valor_bruto,
+                    'valor_final': glosa.factura.valor_bruto,
+                    'estado_pago': 'Pendiente'
+                }
+            )
+            cuenta_cartera = glosa.factura.cuentacartera
+            cuenta_cartera.actualizar_valores_glosas()
         
         # Registrar en el historial
         HistorialGlosa.registrar_cambio(

@@ -10,7 +10,7 @@ from .forms import FacturaForm, RipsUploadForm, ContratoForm, TarifaContratoForm
 from accounts.models import Profile, CatalogoCUPS, CatalogoCIE10, CatalogoCUMS, CatalogoMunicipio, CatalogoPais
 from .validators import validate_rips_item, validate_rips_user
 import json
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from django.contrib.auth.decorators import login_required
 from django.template.loader import render_to_string # Importar para renderizar HTML
 from django.core.paginator import Paginator
@@ -35,6 +35,49 @@ def radicar_factura(request):
             factura.estado = "Radicada"
             factura.archivo_pdf = form.cleaned_data['archivo_pdf']
             print(f"Initial factura (before patient): {factura.pk}, patient: {factura.paciente}")
+
+            # >>> VALIDACIÓN DE NÚMERO DE FACTURA DUPLICADO <<<
+            # Verificar si ya existe una factura con el mismo número
+            if Factura.objects.filter(numero=factura.numero).exists():
+                # La factura debe ser devuelta automáticamente por número duplicado
+                factura.estado = 'Devuelta'
+                factura.save()  # Guardar la factura primero para tener un ID
+                
+                # Crear el registro de devolución con código DE5002
+                subcodigo_devolucion = SubcodigoDevolucion.objects.get(subcodigo='DE5002')
+                Devolucion.objects.create(
+                    factura=factura,
+                    subcodigo=subcodigo_devolucion,
+                    justificacion='Devolución automática: El número de factura ya existe en el sistema. La factura ya fue radicada a la entidad responsable de pago y se encuentra en trámite.',
+                    # devuelto_por es null para devoluciones automáticas
+                )
+                
+                messages.warning(request, f"La factura {factura.numero} ha sido marcada como devuelta porque ya existe una factura con el mismo número en el sistema.")
+                return redirect('facturacion:radicar_factura')
+            # <<< FIN VALIDACIÓN DE NÚMERO DE FACTURA DUPLICADO >>>
+
+            # >>> VALIDACIÓN DE 22 DÍAS <<<
+            # Calcular la diferencia entre fecha_emision y fecha actual
+            fecha_actual = date.today()
+            dias_transcurridos = (fecha_actual - factura.fecha_emision).days
+            
+            if dias_transcurridos > 22:
+                # La factura debe ser devuelta automáticamente
+                factura.estado = 'Devuelta'
+                factura.save()  # Guardar la factura primero para tener un ID
+                
+                # Crear el registro de devolución con código DE5601
+                subcodigo_devolucion = SubcodigoDevolucion.objects.get(subcodigo='DE5601')
+                Devolucion.objects.create(
+                    factura=factura,
+                    subcodigo=subcodigo_devolucion,
+                    justificacion=f'Devolución automática: Han transcurrido {dias_transcurridos} días desde la fecha de expedición de la factura ({factura.fecha_emision}). La radicación debe hacerse dentro de los 22 días siguientes según el artículo 5 de la Resolución 510 de 2022.',
+                    # devuelto_por es null para devoluciones automáticas
+                )
+                
+                messages.warning(request, f"La factura {factura.numero} ha sido marcada como devuelta porque han transcurrido {dias_transcurridos} días desde su expedición (fecha límite: 22 días).")
+                return redirect('facturacion:radicar_factura')
+            # <<< FIN VALIDACIÓN DE 22 DÍAS >>>
 
             # Procesar el archivo RIPS
             archivo = factura.archivo_rips.open()
@@ -109,7 +152,7 @@ def radicar_factura(request):
                 factura.save() 
                 print(f"Factura saved with patient: {factura.paciente}")
 
-                    # Procesar 'servicios' para Rips* items y validar
+                # Procesar 'servicios' para Rips* items y validar
                 for user_data in data.get("usuarios", []): 
                     servicios = user_data.get("servicios", {})
                     for service_type, items_list in servicios.items():
@@ -173,8 +216,13 @@ def radicar_factura(request):
                                         cod_diagnostico_principal=item_data.get("codDiagnosticoPrincipal", "") or "",
                                     )
                                 elif service_type == "hospitalizacion":
+                                    # Campos específicos para hospitalización (no usa common_fields completo)
                                     RipsHospitalizacion.objects.create(
-                                        **common_fields,
+                                        factura=factura,
+                                        paciente=factura_main_paciente,
+                                        cod_prestador=item_data.get("codPrestador", "") or "",
+                                        num_autorizacion=item_data.get("numAutorizacion", "") or "",
+                                        consecutivo=item_data.get("consecutivo", 0) if item_data.get("consecutivo") is not None else 0,
                                         via_ingreso_servicio=item_data.get("viaIngresoServicioSalud", "") or "",
                                         fecha_inicio_atencion=parse_date_time(item_data.get("fechaInicioAtencion")) or datetime(1900, 1, 1, 0, 0),
                                         causa_motivo_atencion=item_data.get("causaMotivoAtencion", "") or "",
@@ -206,13 +254,12 @@ def radicar_factura(request):
                     messages.success(request, "Factura radicada con advertencias en el archivo RIPS.") # Mensaje de éxito/advertencia
                     return redirect('facturacion:radicar_factura') # O a una página de éxito
                 else:
-                    messages.success(request, "Factura y RIPS cargados exitosamente.")
+                    messages.success(request, "Factura radicada exitosamente.")
                     return redirect('facturacion:radicar_factura') # O a una página de éxito
 
-            except json.JSONDecodeError:
-                messages.error(request, "El archivo RIPS no es un JSON válido.")
             except Exception as e:
-                messages.error(request, f"Ocurrió un error inesperado al procesar el archivo RIPS: {e}")
+                messages.error(request, f"Error al procesar el archivo RIPS: {e}")
+                return redirect('facturacion:radicar_factura')
         else:
             messages.error(request, "Error en el formulario de la factura. Por favor, revisa los datos.")
     else:

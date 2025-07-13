@@ -86,7 +86,7 @@ class Glosa(models.Model):
 
     # Campos para la decisión de la ET sobre la respuesta de la IPS
     fecha_decision_et = models.DateField(null=True, blank=True)
-    valor_aceptado_et = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Valor final de la glosa aceptado o levantado por la ET.")
+    valor_aceptado_et = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Valor de la glosa que se descuenta del valor bruto. Si es 0, la glosa se levanta y no se descuenta.")
     decision_et_justificacion = models.TextField(blank=True, null=True, help_text="Justificación de la decisión de la ET o motivo de la devolución.")
 
     def __str__(self):

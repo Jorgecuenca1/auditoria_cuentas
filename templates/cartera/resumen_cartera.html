@@ -2,20 +2,99 @@
 {% block title %}Resumen de Cartera{% endblock %}
 {% block content %}
 <h2 class="mb-4">Resumen de Cartera</h2>
+
+<!-- Resumen de totales -->
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 class="card-title">Valor Inicial</h5>
+        <p class="card-text fs-4 text-primary">${{ valor_inicial_total|floatformat:2 }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 class="card-title">Glosas Provisionales</h5>
+        <p class="card-text fs-4 text-warning">${{ glosas_provisionales_total|floatformat:2 }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 class="card-title">Glosas Definitivas</h5>
+        <p class="card-text fs-4 text-danger">${{ glosas_definitivas_total|floatformat:2 }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 class="card-title">Valor Pagable</h5>
+        <p class="card-text fs-4 text-success">${{ valor_pagable_total|floatformat:2 }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabla detallada -->
 <div class="table-responsive">
   <table class="table table-bordered table-hover align-middle">
     <thead class="table-light">
-      <tr><th>Factura</th><th>IPS</th><th>EPS</th><th>Valor Bruto</th><th>Fecha Radicación</th><th>Estado</th></tr>
+      <tr>
+        <th>Factura</th>
+        <th>IPS</th>
+        <th>EPS</th>
+        <th>Valor Inicial</th>
+        <th>Glosas Provisionales</th>
+        <th>Glosas Definitivas</th>
+        <th>Valor Pagable</th>
+        <th>Estado Pago</th>
+        <th>Fecha Radicación</th>
+      </tr>
     </thead>
     <tbody>
-    {% for factura in facturas %}
+    {% for cuenta in cuentas %}
       <tr>
-        <td>{{ factura.numero }}</td>
-        <td>{{ factura.ips.entidad_nombre }}</td>
-        <td>{{ factura.eps }}</td>
-        <td>${{ factura.valor_bruto|floatformat:2 }}</td>
-        <td>{{ factura.fecha_radicacion }}</td>
-        <td>{{ factura.get_estado_display }}</td>
+        <td>{{ cuenta.factura.numero }}</td>
+        <td>{{ cuenta.ips.entidad_nombre }}</td>
+        <td>{{ cuenta.eps.entidad_nombre }}</td>
+        <td class="text-end">${{ cuenta.valor_inicial|floatformat:2 }}</td>
+        <td class="text-end text-warning">
+          {% if cuenta.valor_glosado_provisional %}
+            ${{ cuenta.valor_glosado_provisional|floatformat:2 }}
+          {% else %}
+            $0.00
+          {% endif %}
+        </td>
+        <td class="text-end text-danger">
+          {% if cuenta.valor_glosado_definitivo %}
+            ${{ cuenta.valor_glosado_definitivo|floatformat:2 }}
+          {% else %}
+            $0.00
+          {% endif %}
+        </td>
+        <td class="text-end text-success fw-bold">
+          {% if cuenta.valor_pagable %}
+            ${{ cuenta.valor_pagable|floatformat:2 }}
+          {% else %}
+            $0.00
+          {% endif %}
+        </td>
+        <td>
+          <span class="badge 
+            {% if cuenta.estado_pago == 'Pendiente' %}bg-secondary
+            {% elif cuenta.estado_pago == 'Glosas_Pendientes' %}bg-warning
+            {% elif cuenta.estado_pago == 'Parcialmente_Glosado' %}bg-danger
+            {% elif cuenta.estado_pago == 'Finalizado' %}bg-success
+            {% elif cuenta.estado_pago == 'Pagado' %}bg-primary
+            {% else %}bg-secondary{% endif %}">
+            {{ cuenta.get_estado_pago_display }}
+          </span>
+        </td>
+        <td>{{ cuenta.factura.fecha_radicacion }}</td>
       </tr>
     {% endfor %}
     </tbody>

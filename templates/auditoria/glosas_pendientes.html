@@ -38,7 +38,23 @@
             <tbody>
                 {% for glosa in glosas %}
                 <tr>
-                    <td>{{ glosa.factura.numero }}</td>
+                    <td>
+                        {% if request.user.profile.role == 'ET' or request.user.profile.role == 'AUDITOR' %}
+                            <a href="{% url 'auditoria:auditar_factura' glosa.factura.id %}" 
+                               class="text-decoration-none fw-bold text-primary" 
+                               title="Ver auditoría de factura">
+                                {{ glosa.factura.numero }}
+                            </a>
+                        {% elif request.user.profile.role == 'IPS' %}
+                            <a href="{% url 'auditoria:reporte_auditoria_detalle' glosa.factura.id %}" 
+                               class="text-decoration-none fw-bold text-success" 
+                               title="Ver reporte de auditoría">
+                                {{ glosa.factura.numero }}
+                            </a>
+                        {% else %}
+                            {{ glosa.factura.numero }}
+                        {% endif %}
+                    </td>
                     <td>
                       {% if glosa.tipo_glosa %}
                         <strong>{{ glosa.tipo_glosa.codigo }}</strong> {{ glosa.tipo_glosa.nombre }}
