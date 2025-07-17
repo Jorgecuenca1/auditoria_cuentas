@@ -145,13 +145,14 @@
                             <th rowspan="2">Descripción Glosa</th>
                             <th rowspan="2">Valor Glosado</th>
                             <th rowspan="2">Estado Actual</th>
-                            <th colspan="4" class="text-center">Respuesta de la IPS</th>
+                            <th colspan="5" class="text-center">Respuesta de la IPS</th>
                             <th colspan="4" class="text-center">Decisión de la ET/Auditor</th>
                             <th rowspan="2">Historial</th>
                         </tr>
                         <tr>
                             <th>Fecha Respuesta</th>
                             <th>IPS Aceptó</th>
+                            <th>Tipo Respuesta</th>
                             <th>Descripción Respuesta</th>
                             <th>Soporte</th>
                             <th>Fecha Decisión</th>
@@ -167,7 +168,13 @@
                             <td>
                                 {% if glosa.tipo_glosa %}
                                     <strong>{{ glosa.tipo_glosa.codigo }}</strong><br>
-                                    <small>{{ glosa.tipo_glosa.nombre }}</small>
+                                    <small>{{ glosa.tipo_glosa.nombre }}</small><br>
+                                    {% if glosa.subtipo_glosa %}
+                                        <span class="text-muted">Subtipo: {{ glosa.subtipo_glosa.codigo }} - {{ glosa.subtipo_glosa.nombre }}</span><br>
+                                    {% endif %}
+                                    {% if glosa.subcodigo_glosa %}
+                                        <span class="text-info">Subcódigo: {{ glosa.subcodigo_glosa.codigo }} - {{ glosa.subcodigo_glosa.nombre }}</span>
+                                    {% endif %}
                                 {% else %}
                                     N/A
                                 {% endif %}
@@ -196,6 +203,16 @@
                                     <span class="badge bg-success">Sí</span>
                                 {% elif glosa.aceptada == False %}
                                     <span class="badge bg-danger">No</span>
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if glosa.tipo_glosa_respuesta %}
+                                    <strong>{{ glosa.tipo_glosa_respuesta.codigo }}</strong> - {{ glosa.tipo_glosa_respuesta.nombre }}
+                                    {% if glosa.subtipo_glosa_respuesta %}
+                                        <br><small class="text-muted">{{ glosa.subtipo_glosa_respuesta.codigo }} - {{ glosa.subtipo_glosa_respuesta.nombre }}</small>
+                                    {% endif %}
                                 {% else %}
                                     <span class="text-muted">N/A</span>
                                 {% endif %}
@@ -324,20 +341,32 @@
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             Pendientes
-                            <span class="badge bg-warning rounded-pill">{{ glosas|dictsort:"estado"|length }}</span>
+                            <span class="badge bg-warning rounded-pill">{{ glosas_pendientes }}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             Respondidas por IPS
-                            <span class="badge bg-info rounded-pill">{{ glosas|dictsort:"estado"|length }}</span>
+                            <span class="badge bg-info rounded-pill">{{ glosas_respondidas_ips }}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             Aceptadas por ET
-                            <span class="badge bg-success rounded-pill">{{ glosas|dictsort:"estado"|length }}</span>
+                            <span class="badge bg-success rounded-pill">{{ glosas_aceptadas_et }}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             Rechazadas por ET
-                            <span class="badge bg-danger rounded-pill">{{ glosas|dictsort:"estado"|length }}</span>
+                            <span class="badge bg-danger rounded-pill">{{ glosas_rechazadas_et }}</span>
                         </li>
+                        {% if glosas_devueltas_ips > 0 %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Devueltas a IPS
+                            <span class="badge bg-secondary rounded-pill">{{ glosas_devueltas_ips }}</span>
+                        </li>
+                        {% endif %}
+                        {% if glosas_indefinidas > 0 %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Indefinidas
+                            <span class="badge bg-primary rounded-pill">{{ glosas_indefinidas }}</span>
+                        </li>
+                        {% endif %}
                     </ul>
                 </div>
                 <div class="col-md-4">
@@ -345,7 +374,7 @@
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             Valor Total Glosado Original
-                            <span class="text-primary">${{ factura.valor_bruto|floatformat:2 }}</span>
+                            <span class="text-primary">${{ valor_total_glosado_original|floatformat:2 }}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             Valor Definitivo Glosado

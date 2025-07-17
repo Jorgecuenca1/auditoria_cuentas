@@ -6,6 +6,7 @@ app_name = 'auditoria'
 
 urlpatterns = [
     path('radicados/', views.lista_radicados, name='lista_radicados'),
+    path('mis-radicados/', views.mis_radicados, name='mis_radicados'),
     path('factura/<int:factura_id>/', views.auditar_factura, name='auditar_factura'),
     path('factura/<int:factura_id>/glosas/', views.lista_glosas, name='lista_glosas'),
     path('glosa/<int:glosa_id>/responder/', views.responder_glosa, name='responder_glosa'),

@@ -30,7 +30,12 @@
           </div>
           <div class="mb-3">
             <label class="form-label">CUFE</label>
-            {{ form.cufe }}
+            <div class="input-group">
+              {{ form.cufe }}
+              <a href="https://catalogo-vpfe.dian.gov.co/User/SearchDocument" target="_blank" class="btn btn-outline-secondary">
+                <i class="bi bi-search"></i> Validación
+              </a>
+            </div>
             {% if form.cufe.errors %}
               <div class="text-danger">{{ form.cufe.errors }}</div>
             {% endif %}

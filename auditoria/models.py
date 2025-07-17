@@ -3,7 +3,7 @@ from facturacion.models import Factura, Paciente, RipsConsulta, RipsMedicamento,
 from accounts.models import Profile
 
 class TipoGlosa(models.Model):
-    codigo = models.CharField(max_length=10, unique=True)
+    codigo = models.CharField(max_length=10)
     nombre = models.CharField(max_length=255)
 
     def __str__(self):
@@ -18,7 +18,7 @@ class SubtipoGlosa(models.Model):
         unique_together = ('tipo_glosa', 'codigo')
 
     def __str__(self):
-        return f"{self.codigo} - {self.nombre}"
+        return f"{self.tipo_glosa.codigo} {self.codigo} - {self.nombre}"
 
 class SubCodigoGlosa(models.Model):
     subtipo_glosa = models.ForeignKey(SubtipoGlosa, on_delete=models.CASCADE, related_name='subcodigos')
@@ -29,10 +29,10 @@ class SubCodigoGlosa(models.Model):
         unique_together = ('subtipo_glosa', 'codigo')
 
     def __str__(self):
-        return f"{self.codigo} - {self.nombre}"
+        return f"{self.subtipo_glosa.tipo_glosa.codigo}{self.subtipo_glosa.codigo}{self.codigo} - {self.nombre}"
 
 class TipoGlosaRespuestaIPS(models.Model):
-    codigo = models.CharField(max_length=10, unique=True)
+    codigo = models.CharField(max_length=10)
     nombre = models.CharField(max_length=255)
 
     def __str__(self):

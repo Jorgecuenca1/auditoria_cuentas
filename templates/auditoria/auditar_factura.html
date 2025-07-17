@@ -162,7 +162,7 @@
               <select name="tipo_glosa" class="form-select form-select-sm mb-1" required>
                 <option value="">Seleccione Tipo</option>
                 {% for tipo in tipos_glosa %}
-                  <option value="{{ tipo.pk }}">{{ tipo.nombre }}</option>
+                  <option value="{{ tipo.pk }}">{{ tipo.codigo }} - {{ tipo.nombre }}</option>
                 {% endfor %}
               </select>
               <select name="subtipo_glosa" class="form-select form-select-sm mb-1" required>
@@ -224,7 +224,7 @@
               <select name="tipo_glosa" class="form-select form-select-sm mb-1" required>
                 <option value="">Seleccione Tipo</option>
                 {% for tipo in tipos_glosa %}
-                  <option value="{{ tipo.pk }}">{{ tipo.nombre }}</option>
+                  <option value="{{ tipo.pk }}">{{ tipo.codigo }} - {{ tipo.nombre }}</option>
                 {% endfor %}
               </select>
               <select name="subtipo_glosa" class="form-select form-select-sm mb-1" required>
@@ -282,7 +282,7 @@
               <select name="tipo_glosa" class="form-select form-select-sm mb-1" required>
                 <option value="">Seleccione Tipo</option>
                 {% for tipo in tipos_glosa %}
-                  <option value="{{ tipo.pk }}">{{ tipo.nombre }}</option>
+                  <option value="{{ tipo.pk }}">{{ tipo.codigo }} - {{ tipo.nombre }}</option>
                 {% endfor %}
               </select>
               <select name="subtipo_glosa" class="form-select form-select-sm mb-1" required>
@@ -344,7 +344,7 @@
               <select name="tipo_glosa" class="form-select form-select-sm mb-1" required>
                 <option value="">Seleccione Tipo</option>
                 {% for tipo in tipos_glosa %}
-                  <option value="{{ tipo.pk }}">{{ tipo.nombre }}</option>
+                  <option value="{{ tipo.pk }}">{{ tipo.codigo }} - {{ tipo.nombre }}</option>
                 {% endfor %}
               </select>
               <select name="subtipo_glosa" class="form-select form-select-sm mb-1" required>
@@ -408,7 +408,7 @@
               <select name="tipo_glosa" class="form-select form-select-sm mb-1" required>
                 <option value="">Seleccione Tipo</option>
                 {% for tipo in tipos_glosa %}
-                  <option value="{{ tipo.pk }}">{{ tipo.nombre }}</option>
+                  <option value="{{ tipo.pk }}">{{ tipo.codigo }} - {{ tipo.nombre }}</option>
                 {% endfor %}
               </select>
               <select name="subtipo_glosa" class="form-select form-select-sm mb-1" required>
@@ -478,12 +478,16 @@
           {% endif %}
         </td>
         <td>
-          {% if glosa.subcodigo_glosa %}
-            {{ glosa.subcodigo_glosa.codigo }}
-          {% elif glosa.subtipo_glosa %}
-            {{ glosa.subtipo_glosa.codigo }}
-          {% elif glosa.tipo_glosa %}
-            {{ glosa.tipo_glosa.codigo }}
+          {% if glosa.tipo_glosa %}
+            <strong>{{ glosa.tipo_glosa.codigo }}</strong> - {{ glosa.tipo_glosa.nombre }}
+            {% if glosa.subtipo_glosa %}
+              <br><small class="text-muted">{{ glosa.subtipo_glosa.codigo }} - {{ glosa.subtipo_glosa.nombre }}</small>
+            {% endif %}
+            {% if glosa.subcodigo_glosa %}
+              <br><small class="text-info">{{ glosa.subcodigo_glosa.codigo }} - {{ glosa.subcodigo_glosa.nombre }}</small>
+            {% endif %}
+          {% else %}
+            N/A
           {% endif %}
         </td>
         <td>{{ glosa.descripcion }}</td>
@@ -536,7 +540,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         .then(data => {
                             subtipoGlosaSelect.innerHTML = '<option value="">Seleccione Subtipo</option>';
                             data.forEach(subtipo => {
-                                subtipoGlosaSelect.innerHTML += `<option value="${subtipo.pk}">${subtipo.nombre}</option>`;
+                                subtipoGlosaSelect.innerHTML += `<option value="${subtipo.pk}">${subtipo.codigo_nombre}</option>`;
                             });
                         });
                 } else {
@@ -554,7 +558,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         .then(data => {
                             subcodigoGlosaSelect.innerHTML = '<option value="">Seleccione Subcódigo</option>';
                             data.forEach(subcodigo => {
-                                subcodigoGlosaSelect.innerHTML += `<option value="${subcodigo.pk}">${subcodigo.nombre}</option>`;
+                                subcodigoGlosaSelect.innerHTML += `<option value="${subcodigo.pk}">${subcodigo.codigo_nombre}</option>`;
                             });
                         });
                 } else {

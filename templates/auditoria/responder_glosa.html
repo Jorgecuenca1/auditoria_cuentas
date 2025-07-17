@@ -15,7 +15,7 @@
             <select id="tipo_glosa_respuesta" name="tipo_glosa_respuesta" class="form-select" required>
                 <option value="">Seleccione un tipo de respuesta</option>
                 {% for tipo in tipos_respuesta %}
-                    <option value="{{ tipo.pk }}">{{ tipo.nombre }}</option>
+                    <option value="{{ tipo.pk }}">{{ tipo.codigo }} - {{ tipo.nombre }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(data => {
                     subtipoRespuestaSelect.innerHTML = '<option value="">Seleccione un subtipo</option>';
                     data.forEach(subtipo => {
-                        subtipoRespuestaSelect.innerHTML += `<option value="${subtipo.pk}">${subtipo.nombre}</option>`;
+                        subtipoRespuestaSelect.innerHTML += `<option value="${subtipo.pk}">${subtipo.codigo_nombre}</option>`;
                     });
                 });
         } else {

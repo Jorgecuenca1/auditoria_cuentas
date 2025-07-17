@@ -2,6 +2,7 @@ import requests
 import json
 from django.conf import settings
 from typing import List, Dict, Optional
+import re
 
 
 class OpenRouterChatbotService:
@@ -10,393 +11,423 @@ class OpenRouterChatbotService:
         self.api_url = "https://openrouter.ai/api/v1/chat/completions"
         self.model = "anthropic/claude-3-haiku"  # Modelo gratuito de OpenRouter
         
-        # Base de conocimiento por rol
-        self.knowledge_base = {
+        # Base de conocimiento por rol con funciones específicas
+        self.role_functions = {
             'IPS': {
-                'context': """
-                Eres un asistente especializado en ayudar a usuarios IPS (Instituciones Prestadoras de Servicios de Salud) 
-                en el sistema de auditoría de cuentas médicas. Tu función es responder preguntas sobre:
-                
-                - Cómo responder glosas
-                - Cómo subir documentos de soporte
-                - Cómo ver el estado de las facturas
-                - Cómo acceder al historial de glosas
-                - Procesos de auditoría desde la perspectiva de la IPS
-                - Cómo interpretar las decisiones de la ET
-                - Cómo manejar devoluciones de facturas
-                
-                Responde de manera clara, concisa y amigable. Usa ejemplos prácticos cuando sea posible.
-                """,
-                'examples': [
-                    "¿Cómo respondo una glosa?",
-                    "¿Dónde subo los documentos de soporte?",
-                    "¿Cómo veo el historial de mis glosas?",
-                    "¿Qué significa que mi factura fue devuelta?",
-                    "¿Cómo sé si la ET aceptó mi respuesta?"
-                ]
+                'name': 'IPS (Instituciones Prestadoras de Servicios de Salud)',
+                'functions': {
+                    'responder_glosas': {
+                        'title': '📝 Responder Glosas',
+                        'description': 'Cómo responder glosas de manera efectiva',
+                        'steps': [
+                            '1. Ve a "Glosas" → "Glosas Pendientes"',
+                            '2. Busca la glosa que quieres responder',
+                            '3. Haz clic en "Responder"',
+                            '4. Completa el formulario con:',
+                            '   • Respuesta detallada a la glosa',
+                            '   • Documentos de soporte (opcional)',
+                            '   • Justificación técnica',
+                            '5. Haz clic en "Enviar Respuesta"'
+                        ],
+                        'tips': [
+                            'Sé específico y detallado en tu respuesta',
+                            'Incluye referencias a normativas si aplica',
+                            'Adjunta toda la documentación de soporte disponible',
+                            'Responde dentro del plazo establecido'
+                        ]
+                    },
+                    'ver_estado_facturas': {
+                        'title': '📊 Ver Estado de Facturas',
+                        'description': 'Cómo ver el estado actual de tus facturas',
+                        'steps': [
+                            '1. Ve a "Radicados" en el menú principal',
+                            '2. Verás todas tus facturas con su estado actual',
+                            '3. Los estados posibles son:',
+                            '   • Radicada: Factura enviada a la ET',
+                            '   • En Auditoría: ET está revisando',
+                            '   • Con Glosas: Tiene glosas pendientes',
+                            '   • Aprobada: Factura aprobada para pago',
+                            '   • Devuelta: Requiere correcciones'
+                        ]
+                    },
+                    'subir_documentos': {
+                        'title': '📎 Subir Documentos de Soporte',
+                        'description': 'Cómo adjuntar documentos a tus respuestas',
+                        'steps': [
+                            '1. Al responder una glosa, verás la sección "Documentos"',
+                            '2. Haz clic en "Seleccionar archivos"',
+                            '3. Formatos aceptados: PDF, JPG, PNG',
+                            '4. Tamaño máximo: 10MB por archivo',
+                            '5. Puedes subir múltiples archivos',
+                            '6. Haz clic en "Guardar" para adjuntarlos'
+                        ]
+                    },
+                    'historial_glosas': {
+                        'title': '📋 Ver Historial de Glosas',
+                        'description': 'Cómo acceder al historial completo de glosas',
+                        'steps': [
+                            '1. Ve a "Glosas" → "Glosas Pendientes"',
+                            '2. En cada glosa verás un ícono de historial',
+                            '3. Haz clic en el ícono para ver:',
+                            '   • Fecha de creación de la glosa',
+                            '   • Respuestas enviadas',
+                            '   • Decisiones de la ET',
+                            '   • Documentos adjuntos',
+                            '   • Cambios de estado'
+                        ]
+                    },
+                    'manejar_devoluciones': {
+                        'title': '🔄 Manejar Devoluciones',
+                        'description': 'Qué hacer cuando una factura es devuelta',
+                        'steps': [
+                            '1. Ve a "Devoluciones" en el menú principal',
+                            '2. Revisa las razones de la devolución',
+                            '3. Corrige los errores identificados',
+                            '4. Sube la factura corregida',
+                            '5. Adjunta documentación adicional si es necesario',
+                            '6. Re-radica la factura corregida'
+                        ]
+                    }
+                }
             },
             'ET': {
-                'context': """
-                Eres un asistente especializado en ayudar a usuarios ET (Entidad Territorial) 
-                en el sistema de auditoría de cuentas médicas. Tu función es responder preguntas sobre:
-                
-                - Cómo auditar facturas
-                - Cómo crear glosas
-                - Cómo decidir sobre respuestas de IPS
-                - Cómo generar reportes
-                - Cómo devolver facturas
-                - Cómo interpretar el historial de glosas
-                - Procesos de auditoría y control
-                
-                Responde de manera técnica pero comprensible. Incluye pasos específicos cuando sea necesario.
-                """,
-                'examples': [
-                    "¿Cómo creo una glosa?",
-                    "¿Cómo decido si acepto la respuesta de una IPS?",
-                    "¿Cómo genero reportes de auditoría?",
-                    "¿Cómo veo el historial completo de una glosa?",
-                    "¿Cuándo debo devolver una factura?"
-                ]
+                'name': 'ET (Entidad Territorial)',
+                'functions': {
+                    'auditar_facturas': {
+                        'title': '🔍 Auditar Facturas',
+                        'description': 'Cómo realizar auditorías efectivas',
+                        'steps': [
+                            '1. Ve a "Auditoría" → "Radicados"',
+                            '2. Busca la factura que quieres auditar',
+                            '3. Haz clic en "Auditar Factura"',
+                            '4. Revisa todos los servicios facturados',
+                            '5. Identifica items que requieren glosa',
+                            '6. Crea glosas con justificación técnica'
+                        ]
+                    },
+                    'crear_glosas': {
+                        'title': '📝 Crear Glosas',
+                        'description': 'Cómo crear glosas con justificación técnica',
+                        'steps': [
+                            '1. En la auditoría de factura, haz clic en "Crear Glosa"',
+                            '2. Selecciona el tipo de glosa:',
+                            '   • Técnica: Problemas con códigos, descripciones',
+                            '   • Administrativa: Documentación faltante',
+                            '   • Económica: Valores no autorizados',
+                            '3. Completa la justificación detallada',
+                            '4. Adjunta documentos de soporte si es necesario',
+                            '5. Haz clic en "Guardar Glosa"'
+                        ]
+                    },
+                    'decidir_respuestas': {
+                        'title': '⚖️ Decidir sobre Respuestas de IPS',
+                        'description': 'Cómo evaluar respuestas de IPS a glosas',
+                        'steps': [
+                            '1. Ve a "Auditoría" → "Glosas Pendientes"',
+                            '2. Busca glosas con respuestas de IPS',
+                            '3. Revisa la respuesta y documentación',
+                            '4. Evalúa si la justificación es válida',
+                            '5. Toma decisión: Aceptar o Rechazar',
+                            '6. Agrega comentarios si es necesario'
+                        ]
+                    },
+                    'generar_reportes': {
+                        'title': '📊 Generar Reportes',
+                        'description': 'Cómo crear reportes de auditoría',
+                        'steps': [
+                            '1. Ve a "Reportes" en el menú principal',
+                            '2. Selecciona el tipo de reporte:',
+                            '   • Reporte de Auditoría por Lote',
+                            '   • Reporte de Auditoría Detalle',
+                            '   • Reporte de Glosas',
+                            '3. Configura los filtros de fecha y entidad',
+                            '4. Haz clic en "Generar Reporte"',
+                            '5. Descarga el reporte en PDF'
+                        ]
+                    },
+                    'devolver_facturas': {
+                        'title': '🔄 Devolver Facturas',
+                        'description': 'Cuándo y cómo devolver facturas',
+                        'steps': [
+                            '1. En la auditoría, identifica errores críticos',
+                            '2. Errores que justifican devolución:',
+                            '   • Documentación faltante esencial',
+                            '   • Errores en datos del paciente',
+                            '   • Servicios no autorizados',
+                            '3. Haz clic en "Devolver Factura"',
+                            '4. Especifica las razones de devolución',
+                            '5. La IPS recibirá notificación'
+                        ]
+                    }
+                }
             },
             'AUDITOR': {
-                'context': """
-                Eres un asistente especializado en ayudar a auditores 
-                en el sistema de auditoría de cuentas médicas. Tu función es responder preguntas sobre:
-                
-                - Cómo realizar auditorías
-                - Cómo revisar glosas
-                - Cómo generar reportes detallados
-                - Cómo analizar el historial de cambios
-                - Cómo finalizar auditorías
-                - Cómo interpretar datos de auditoría
-                - Procesos de control y verificación
-                
-                Responde de manera profesional y técnica. Incluye detalles sobre procesos de auditoría.
-                """,
-                'examples': [
-                    "¿Cómo realizo una auditoría completa?",
-                    "¿Cómo reviso el historial de una glosa?",
-                    "¿Cómo genero reportes de auditoría?",
-                    "¿Cómo finalizo una auditoría?",
-                    "¿Cómo interpreto los datos de auditoría?"
-                ]
+                'name': 'Auditor',
+                'functions': {
+                    'realizar_auditoria': {
+                        'title': '🔍 Realizar Auditoría Completa',
+                        'description': 'Proceso completo de auditoría',
+                        'steps': [
+                            '1. Ve a "Auditoría" → "Radicados"',
+                            '2. Selecciona la factura a auditar',
+                            '3. Revisa exhaustivamente:',
+                            '   • Datos del paciente',
+                            '   • Servicios facturados',
+                            '   • Documentación de soporte',
+                            '   • Valores y códigos',
+                            '4. Crea glosas según hallazgos',
+                            '5. Documenta todos los hallazgos'
+                        ]
+                    },
+                    'revisar_glosas': {
+                        'title': '📋 Revisar Glosas y Respuestas',
+                        'description': 'Cómo revisar glosas existentes',
+                        'steps': [
+                            '1. Ve a "Auditoría" → "Glosas Pendientes"',
+                            '2. Revisa glosas creadas por otros auditores',
+                            '3. Analiza respuestas de IPS',
+                            '4. Verifica documentación adjunta',
+                            '5. Toma decisiones informadas',
+                            '6. Documenta justificaciones'
+                        ]
+                    },
+                    'generar_reportes_detallados': {
+                        'title': '📊 Generar Reportes Detallados',
+                        'description': 'Reportes especializados de auditoría',
+                        'steps': [
+                            '1. Ve a "Reportes" → "Reporte de Auditoría Detalle"',
+                            '2. Selecciona factura específica',
+                            '3. El reporte incluye:',
+                            '   • Resumen ejecutivo',
+                            '   • Detalle de glosas por tipo',
+                            '   • Historial completo de cambios',
+                            '   • Documentos adjuntos',
+                            '   • Decisiones tomadas'
+                        ]
+                    },
+                    'analizar_historial': {
+                        'title': '📈 Analizar Historial de Cambios',
+                        'description': 'Cómo interpretar el historial de glosas',
+                        'steps': [
+                            '1. En cualquier glosa, haz clic en el ícono de historial',
+                            '2. Revisa cronológicamente:',
+                            '   • Fecha de creación',
+                            '   • Modificaciones realizadas',
+                            '   • Respuestas de IPS',
+                            '   • Decisiones tomadas',
+                            '   • Documentos agregados'
+                        ]
+                    },
+                    'finalizar_auditoria': {
+                        'title': '✅ Finalizar Auditoría',
+                        'description': 'Cómo cerrar una auditoría correctamente',
+                        'steps': [
+                            '1. Verifica que todas las glosas tengan decisión',
+                            '2. Revisa que la documentación esté completa',
+                            '3. Genera reporte final de auditoría',
+                            '4. Haz clic en "Finalizar Auditoría"',
+                            '5. Confirma que todos los datos estén correctos',
+                            '6. La factura pasa al siguiente estado'
+                        ]
+                    }
+                }
             },
             'EPS': {
-                'context': """
-                Eres un asistente especializado en ayudar a usuarios EPS (Entidades Promotoras de Salud) 
-                en el sistema de auditoría de cuentas médicas. Tu función es responder preguntas sobre:
-                
-                - Cómo revisar facturas
-                - Cómo ver el estado de auditorías
-                - Cómo acceder a reportes
-                - Cómo interpretar resultados de auditoría
-                - Cómo ver el historial de glosas
-                - Procesos de pago y cartera
-                
-                Responde de manera clara y orientada a la gestión. Enfócate en la información relevante para EPS.
-                """,
-                'examples': [
-                    "¿Cómo veo el estado de mis facturas?",
-                    "¿Cómo accedo a los reportes de auditoría?",
-                    "¿Cómo interpreto los resultados de auditoría?",
-                    "¿Cómo veo el historial de glosas?",
-                    "¿Cómo calculo mi cartera?"
-                ]
+                'name': 'EPS (Entidades Promotoras de Salud)',
+                'functions': {
+                    'revisar_facturas': {
+                        'title': '📋 Revisar Estado de Facturas',
+                        'description': 'Cómo ver el estado de tus facturas',
+                        'steps': [
+                            '1. Ve a "Radicados" en el menú principal',
+                            '2. Filtra por tu EPS',
+                            '3. Estados disponibles:',
+                            '   • Radicada: Enviada a ET',
+                            '   • En Auditoría: En revisión',
+                            '   • Con Glosas: Tiene observaciones',
+                            '   • Aprobada: Lista para pago',
+                            '   • Devuelta: Requiere corrección'
+                        ]
+                    },
+                    'ver_resultados_auditoria': {
+                        'title': '📊 Ver Resultados de Auditoría',
+                        'description': 'Cómo interpretar resultados de auditoría',
+                        'steps': [
+                            '1. Ve a "Reportes" → "Reporte de Auditoría"',
+                            '2. Selecciona factura específica',
+                            '3. Revisa:',
+                            '   • Total facturado vs aprobado',
+                            '   • Glosas aplicadas',
+                            '   • Justificaciones de la ET',
+                            '   • Documentos de soporte',
+                            '4. Calcula el valor a pagar'
+                        ]
+                    },
+                    'acceder_reportes': {
+                        'title': '📈 Acceder a Reportes',
+                        'description': 'Reportes disponibles para EPS',
+                        'steps': [
+                            '1. Ve a "Reportes" en el menú principal',
+                            '2. Reportes disponibles:',
+                            '   • Reporte de Auditoría por Lote',
+                            '   • Reporte de Auditoría Detalle',
+                            '   • Reporte de Glosas',
+                            '   • Reporte de Cartera',
+                            '3. Configura filtros de fecha y entidad',
+                            '4. Descarga en formato PDF'
+                        ]
+                    },
+                    'interpretar_glosas': {
+                        'title': '🔍 Interpretar Glosas',
+                        'description': 'Cómo entender las glosas aplicadas',
+                        'steps': [
+                            '1. En el reporte de auditoría, revisa la sección de glosas',
+                            '2. Tipos de glosas:',
+                            '   • Técnica: Problemas con códigos o descripciones',
+                            '   • Administrativa: Documentación faltante',
+                            '   • Económica: Valores no autorizados',
+                            '3. Revisa justificaciones de la ET',
+                            '4. Analiza impacto en el pago'
+                        ]
+                    },
+                    'gestionar_cartera': {
+                        'title': '💰 Gestionar Cartera',
+                        'description': 'Cómo calcular y gestionar tu cartera',
+                        'steps': [
+                            '1. Ve a "Cartera" en el menú principal',
+                            '2. Revisa totales:',
+                            '   • Valor inicial de facturas',
+                            '   • Glosas provisionales',
+                            '   • Glosas definitivas',
+                            '   • Valor pagable final',
+                            '3. Analiza tendencias por IPS',
+                            '4. Proyecta pagos futuros'
+                        ]
+                    }
+                }
             }
         }
 
+    def is_greeting(self, message: str) -> bool:
+        """Detecta si el mensaje es un saludo"""
+        greetings = [
+            'hola', 'buenos días', 'buenas tardes', 'buenas noches', 'saludos',
+            'hey', 'hi', 'hello', 'buen día', 'qué tal', 'como estás',
+            'ayuda', 'ayúdame', 'necesito ayuda', 'qué puedes hacer',
+            'funciones', 'opciones', 'menú', 'qué haces'
+        ]
+        
+        message_lower = message.lower().strip()
+        return any(greeting in message_lower for greeting in greetings)
+
+    def get_function_menu(self, role: str) -> str:
+        """Genera el menú de funciones específicas para el rol"""
+        if role not in self.role_functions:
+            return "Lo siento, no tengo información específica para tu rol."
+        
+        role_info = self.role_functions[role]
+        menu = f"""🎯 **Menú de Funciones para {role_info['name']}**
+
+Aquí tienes las funciones principales que puedo explicarte:
+
+"""
+        
+        for key, function in role_info['functions'].items():
+            menu += f"**{function['title']}**\n"
+            menu += f"_{function['description']}_\n\n"
+        
+        menu += """**¿Qué función te gustaría que te explique en detalle?**
+
+Escribe el número o el nombre de la función que te interesa:
+"""
+        
+        # Agregar opciones numeradas
+        for i, (key, function) in enumerate(role_info['functions'].items(), 1):
+            menu += f"{i}. {function['title']}\n"
+        
+        return menu
+
+    def get_function_details(self, role: str, function_key: str) -> str:
+        """Obtiene los detalles completos de una función específica"""
+        if role not in self.role_functions:
+            return "Lo siento, no tengo información para tu rol."
+        
+        if function_key not in self.role_functions[role]['functions']:
+            return "Lo siento, no encontré esa función específica."
+        
+        function = self.role_functions[role]['functions'][function_key]
+        
+        details = f"""# {function['title']}
+
+{function['description']}
+
+## 📋 Pasos a seguir:
+
+"""
+        
+        for step in function['steps']:
+            details += f"{step}\n"
+        
+        if 'tips' in function:
+            details += "\n## 💡 Consejos importantes:\n\n"
+            for tip in function['tips']:
+                details += f"• {tip}\n"
+        
+        details += f"""
+
+---
+¿Te gustaría que te explique otra función o tienes alguna pregunta específica sobre {function['title']}?"""
+        
+        return details
+
     def get_response(self, message: str, role: str, conversation_history: Optional[List[Dict]] = None) -> str:
         """
-        Genera una respuesta usando OpenRouter basada en el rol del usuario y el historial de conversación
+        Genera una respuesta basada en el rol del usuario y el mensaje
         """
-        if role not in self.knowledge_base:
-            return "Lo siento, no tengo información específica para tu rol. Por favor contacta al administrador."
+        message_lower = message.lower().strip()
         
-        # Construir el prompt con contexto y historial
-        context = self.knowledge_base[role]['context']
+        # Detectar si es un saludo
+        if self.is_greeting(message):
+            return self.get_function_menu(role)
         
-        # Agregar historial de conversación si existe
-        history_context = ""
-        if conversation_history:
-            history_context = "\n\nHistorial de la conversación:\n"
-            for msg in conversation_history[-5:]:  # Últimos 5 mensajes
-                history_context += f"Usuario: {msg['message']}\n"
-                history_context += f"Asistente: {msg['response']}\n"
-        
-        # Construir el prompt completo
-        system_prompt = f"""
-        {context}
-        
-        {history_context}
-        
-        Responde de manera útil, clara y específica para el rol de {role}. 
-        Si la pregunta no está relacionada con el sistema de auditoría de cuentas médicas, 
-        indícalo amablemente y sugiere hacer preguntas relacionadas con el sistema.
-        """
-        
-        try:
-            # Preparar la petición a OpenRouter
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "HTTP-Referer": "https://auditoria-cuentas.com",
-                "X-Title": "Sistema de Auditoría de Cuentas Médicas",
-                "Content-Type": "application/json"
-            }
+        # Detectar si está pidiendo una función específica
+        if role in self.role_functions:
+            role_info = self.role_functions[role]
             
-            data = {
-                "model": self.model,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": system_prompt
-                    },
-                    {
-                        "role": "user",
-                        "content": message
-                    }
-                ],
-                "max_tokens": 1000,
-                "temperature": 0.7
-            }
+            # Buscar función por número
+            if message_lower.isdigit():
+                num = int(message_lower)
+                if 1 <= num <= len(role_info['functions']):
+                    function_key = list(role_info['functions'].keys())[num - 1]
+                    return self.get_function_details(role, function_key)
             
-            print(f"Enviando petición a OpenRouter con modelo {self.model}")
-            response = requests.post(
-                url=self.api_url,
-                headers=headers,
-                data=json.dumps(data)
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                ai_response = result['choices'][0]['message']['content']
-                print(f"Respuesta de OpenRouter: {ai_response[:200]}...")
-                return ai_response
-            else:
-                print(f"Error en OpenRouter API: {response.status_code} - {response.text}")
-                return self._get_fallback_response(message, role)
-                
-        except Exception as e:
-            print(f"Error en OpenRouter: {str(e)}")
-            return self._get_fallback_response(message, role)
+            # Buscar función por nombre
+            for key, function in role_info['functions'].items():
+                function_words = function['title'].lower().split()
+                if any(word in message_lower for word in function_words):
+                    return self.get_function_details(role, key)
+        
+        # Respuesta genérica si no se reconoce
+        return f"""No entiendo exactamente qué necesitas. 
 
-    def _get_fallback_response(self, message: str, role: str) -> str:
-        """Respuestas de fallback cuando la API no está disponible"""
-        if role == 'IPS':
-            if "manual" in message.lower() or "ayuda" in message.lower():
-                return """**Manual de Usuario para IPS - Sistema de Auditoría de Cuentas Médicas**
+Como {self.role_functions.get(role, {}).get('name', 'usuario')}, puedo ayudarte con las funciones del sistema.
 
-**1. Navegación Principal:**
-- **Radicados**: Ver todas las facturas radicadas para tu IPS
-- **Glosas**: Gestionar glosas recibidas y respuestas
-- **Devoluciones**: Ver facturas devueltas por la ET
-- **Reportes**: Acceder a reportes específicos de tu IPS
-
-**2. Responder Glosas:**
-1. Ve a "Glosas" → "Glosas Pendientes"
-2. Busca la glosa que quieres responder
-3. Haz clic en "Responder"
-4. Completa el formulario con:
-   - Respuesta detallada a la glosa
-   - Documentos de soporte (opcional)
-   - Justificación técnica
-5. Haz clic en "Enviar Respuesta"
-
-**3. Ver Estado de Facturas:**
-- Ve a "Radicados" para ver el estado de todas tus facturas
-- Los estados posibles son: Radicada, En Auditoría, Con Glosas, Aprobada, Devuelta
-
-**4. Historial de Glosas:**
-- En cada glosa puedes ver el historial completo de cambios
-- Haz clic en el ícono de historial para ver todos los movimientos
-
-**5. Documentos de Soporte:**
-- Puedes subir documentos al responder glosas
-- Formatos aceptados: PDF, JPG, PNG
-- Tamaño máximo: 10MB por archivo
-
-¿Te gustaría que profundice en algún tema específico?"""
-            elif "responder glosa" in message.lower():
-                return """**Cómo Responder una Glosa - Paso a Paso:**
-
-1. **Accede a las Glosas:**
-   - Ve al menú principal → "Glosas" → "Glosas Pendientes"
-
-2. **Encuentra la Glosa:**
-   - Usa los filtros para buscar por número de factura, fecha, etc.
-   - Haz clic en "Responder" en la glosa que quieres contestar
-
-3. **Completa la Respuesta:**
-   - Explica detalladamente por qué no estás de acuerdo con la glosa
-   - Adjunta documentos de soporte si los tienes
-   - Incluye justificación técnica y legal
-
-4. **Enviar Respuesta:**
-   - Revisa que toda la información esté completa
-   - Haz clic en "Enviar Respuesta"
-
-**Consejos importantes:**
-- Sé específico y detallado en tu respuesta
-- Incluye referencias a normativas si aplica
-- Adjunta toda la documentación de soporte disponible
-- Responde dentro del plazo establecido
-
-¿Necesitas ayuda con algún paso específico?"""
-            else:
-                return "Hola! Soy tu asistente para el sistema de auditoría de cuentas médicas. Como IPS, puedo ayudarte con:\n\n- Responder glosas\n- Ver estado de facturas\n- Subir documentos\n- Acceder a reportes\n- Ver historial de glosas\n\n¿En qué puedo ayudarte hoy?"
-
-        elif role == 'ET':
-            if "crear glosa" in message.lower():
-                return """**Cómo Crear una Glosa - Paso a Paso:**
-
-1. **Accede a la Auditoría:**
-   - Ve al menú principal → "Auditoría" → "Radicados"
-
-2. **Selecciona la Factura:**
-   - Busca la factura que quieres auditar
-   - Haz clic en "Auditar Factura"
-
-3. **Revisa los Detalles:**
-   - Revisa todos los servicios facturados
-   - Identifica los items que requieren glosa
-
-4. **Crear Glosa:**
-   - Haz clic en "Crear Glosa" en el item específico
-   - Selecciona el tipo de glosa
-   - Completa la justificación
-   - Adjunta documentos de soporte si es necesario
-
-5. **Guardar Glosa:**
-   - Revisa que toda la información esté correcta
-   - Haz clic en "Guardar Glosa"
-
-**Tipos de Glosas Disponibles:**
-- **Técnica**: Problemas con códigos, descripciones, etc.
-- **Administrativa**: Documentación faltante o incorrecta
-- **Económica**: Valores no autorizados o incorrectos
-
-¿Necesitas ayuda con algún paso específico?"""
-            else:
-                return "Hola! Soy tu asistente para el sistema de auditoría de cuentas médicas. Como ET, puedo ayudarte con:\n\n- Crear glosas\n- Auditar facturas\n- Decidir sobre respuestas de IPS\n- Generar reportes\n- Devolver facturas\n\n¿En qué puedo ayudarte hoy?"
-
-        elif role == 'AUDITOR':
-            return "Hola! Soy tu asistente para el sistema de auditoría de cuentas médicas. Como Auditor, puedo ayudarte con:\n\n- Realizar auditorías completas\n- Revisar glosas y respuestas\n- Generar reportes detallados\n- Analizar historiales\n- Finalizar auditorías\n\n¿En qué puedo ayudarte hoy?"
-
-        elif role == 'EPS':
-            return "Hola! Soy tu asistente para el sistema de auditoría de cuentas médicas. Como EPS, puedo ayudarte con:\n\n- Revisar estado de facturas\n- Ver resultados de auditorías\n- Acceder a reportes\n- Interpretar glosas\n- Gestionar cartera\n\n¿En qué puedo ayudarte hoy?"
-
-        return "Hola! Soy tu asistente para el sistema de auditoría de cuentas médicas. ¿En qué puedo ayudarte hoy?"
+Escribe "hola" o "ayuda" para ver el menú completo de funciones disponibles para tu rol."""
 
     def get_welcome_message(self, role: str) -> str:
         """Genera un mensaje de bienvenida personalizado según el rol"""
-        if role == 'IPS':
-            return """¡Hola! 👋 Soy tu asistente virtual especializado en el sistema de auditoría de cuentas médicas.
-
-Como **IPS**, puedo ayudarte con:
-
-🔍 **Consultas sobre Glosas:**
-- Cómo responder glosas de manera efectiva
-- Qué documentos subir como soporte
-- Cómo interpretar las decisiones de la ET
-
-📊 **Estado de Facturas:**
-- Ver el estado actual de tus facturas
-- Entender los diferentes estados del proceso
-- Acceder al historial completo
-
-📋 **Procesos y Procedimientos:**
-- Guías paso a paso para cada proceso
-- Mejores prácticas para responder glosas
-- Cómo manejar devoluciones
-
-💡 **Consejos y Recomendaciones:**
-- Optimizar tus respuestas a glosas
-- Documentación recomendada
-- Plazos y tiempos importantes
-
-¿En qué puedo ayudarte hoy? Puedes preguntarme sobre cualquier aspecto del sistema de auditoría."""
+        if role not in self.role_functions:
+            return "¡Hola! 👋 Soy tu asistente virtual para el sistema de auditoría de cuentas médicas. ¿En qué puedo ayudarte hoy?"
         
-        elif role == 'ET':
-            return """¡Hola! 👋 Soy tu asistente virtual especializado en el sistema de auditoría de cuentas médicas.
-
-Como **ET**, puedo ayudarte con:
-
-🔍 **Auditoría de Facturas:**
-- Cómo realizar auditorías efectivas
-- Crear glosas con justificación técnica
-- Revisar respuestas de IPS
-
-📊 **Gestión de Glosas:**
-- Decidir sobre respuestas de IPS
-- Aprobar o rechazar justificaciones
-- Gestionar el flujo de glosas
-
-📋 **Reportes y Análisis:**
-- Generar reportes de auditoría
-- Analizar tendencias y estadísticas
-- Exportar datos para análisis
-
-⚖️ **Control y Verificación:**
-- Devolver facturas cuando sea necesario
-- Establecer criterios de auditoría
-- Mantener estándares de calidad
-
-¿En qué puedo ayudarte hoy? Puedes preguntarme sobre cualquier aspecto del proceso de auditoría."""
+        role_info = self.role_functions[role]
         
-        elif role == 'AUDITOR':
-            return """¡Hola! 👋 Soy tu asistente virtual especializado en el sistema de auditoría de cuentas médicas.
+        return f"""¡Hola! 👋 Soy tu asistente virtual especializado en el sistema de auditoría de cuentas médicas.
 
-Como **Auditor**, puedo ayudarte con:
+Como **{role_info['name']}**, puedo ayudarte con todas las funciones del sistema.
 
-🔍 **Auditorías Completas:**
-- Procesos de auditoría paso a paso
-- Revisión exhaustiva de facturas
-- Análisis de documentación
+**¿Qué te gustaría hacer hoy?**
 
-📊 **Gestión de Glosas:**
-- Crear glosas técnicas y administrativas
-- Revisar respuestas de IPS
-- Tomar decisiones informadas
-
-📋 **Reportes Detallados:**
-- Generar reportes de auditoría
-- Analizar historiales completos
-- Documentar hallazgos
-
-⚖️ **Control de Calidad:**
-- Verificar cumplimiento normativo
-- Establecer criterios de auditoría
-- Finalizar auditorías correctamente
-
-¿En qué puedo ayudarte hoy? Puedes preguntarme sobre cualquier aspecto técnico del proceso de auditoría."""
-        
-        elif role == 'EPS':
-            return """¡Hola! 👋 Soy tu asistente virtual especializado en el sistema de auditoría de cuentas médicas.
-
-Como **EPS**, puedo ayudarte con:
-
-🔍 **Seguimiento de Facturas:**
-- Ver el estado actual de tus facturas
-- Revisar resultados de auditorías
-- Monitorear el proceso de glosas
-
-📊 **Reportes y Análisis:**
-- Acceder a reportes de auditoría
-- Interpretar resultados y estadísticas
-- Analizar tendencias de glosas
-
-📋 **Gestión de Cartera:**
-- Calcular cartera actual
-- Proyectar pagos futuros
-- Analizar impacto de glosas
-
-💼 **Toma de Decisiones:**
-- Basar decisiones en datos de auditoría
-- Optimizar procesos de pago
-- Gestionar relaciones con IPS
-
-¿En qué puedo ayudarte hoy? Puedes preguntarme sobre cualquier aspecto de la gestión de facturas y auditorías."""
-
-        return "¡Hola! 👋 Soy tu asistente virtual para el sistema de auditoría de cuentas médicas. ¿En qué puedo ayudarte hoy?"
+Escribe "hola" o "ayuda" para ver el menú completo de funciones disponibles para tu rol, o pregúntame directamente sobre cualquier proceso que necesites."""
 
 
 # Instancia global del servicio

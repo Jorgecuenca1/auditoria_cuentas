@@ -30,6 +30,18 @@
                         <dt class="col-sm-4">IPS Aceptó Glosa:</dt>
                         <dd class="col-sm-8">{% if glosa.aceptada %}Sí{% elif glosa.aceptada == False %}No{% else %}N/A{% endif %}</dd>
 
+                        <dt class="col-sm-4">Tipo de Respuesta:</dt>
+                        <dd class="col-sm-8">
+                            {% if glosa.tipo_glosa_respuesta %}
+                                <strong>{{ glosa.tipo_glosa_respuesta.codigo }}</strong> - {{ glosa.tipo_glosa_respuesta.nombre }}
+                                {% if glosa.subtipo_glosa_respuesta %}
+                                    <br><small class="text-muted">Subtipo: {{ glosa.subtipo_glosa_respuesta.codigo }} - {{ glosa.subtipo_glosa_respuesta.nombre }}</small>
+                                {% endif %}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </dd>
+
                         <dt class="col-sm-4">Descripción Respuesta IPS:</dt>
                         <dd class="col-sm-8">{{ glosa.descripcion_respuesta|default:"N/A" }}</dd>
 

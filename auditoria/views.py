@@ -315,16 +315,29 @@ def reporte_auditoria_detalle(request, factura_id):
         'historial', 'historial__usuario'
     ).order_by('fecha_glosa')
 
+    # Calcular estadísticas por estado considerando el flujo real de la glosa
+    glosas_pendientes = glosas.filter(fecha_respuesta__isnull=True).count()
+    # Una glosa está "Respondida por IPS" si tiene fecha_respuesta, independientemente del estado final
+    glosas_respondidas_ips = glosas.filter(fecha_respuesta__isnull=False).count()
+    # Mapear estados legacy: "Aceptada" es equivalente a "Aceptada ET"
+    glosas_aceptadas_et = glosas.filter(estado__in=['Aceptada', 'Aceptada ET']).count()
+    glosas_rechazadas_et = glosas.filter(estado='Rechazada ET').count()
+    glosas_devueltas_ips = glosas.filter(estado='Devuelta a IPS').count()
+    glosas_indefinidas = glosas.filter(estado='Indefinida').count()
+
+    # Calcular valor total glosado original (suma de todos los valores glosados)
+    valor_total_glosado_original = sum(glosa.valor_glosado for glosa in glosas)
+
     valor_total_glosado_definitivo = Decimal('0.00')
     for glosa in glosas:
         if glosa.estado == 'Rechazada ET':
             # Si la ET rechaza la respuesta de la IPS, el valor glosado original es definitivo
             valor_total_glosado_definitivo += glosa.valor_glosado
-        elif glosa.estado == 'Aceptada ET' and glosa.valor_aceptado_et is not None:
+        elif glosa.estado in ['Aceptada', 'Aceptada ET'] and glosa.valor_aceptado_et is not None:
             # Si la ET acepta parcialmente, se usa el valor_aceptado_et (que representa lo que AUN se glosa, si la IPS no lo levantó todo)
             # Si glosa.valor_aceptado_et es 0, significa que la glosa fue completamente levantada.
             valor_total_glosado_definitivo += glosa.valor_aceptado_et
-        # Glosas en 'Pendiente', 'Respondida IPS', 'Devuelta a IPS', 'Indefinida' no afectan el valor definitivo de la cartera hasta que la ET decida.
+        # Glosas en 'Pendiente', 'Respondida'/'Respondida IPS', 'Devuelta a IPS', 'Indefinida' no afectan el valor definitivo de la cartera hasta que la ET decida.
         # Asumo que valor_aceptado_et en el modelo glosa representa lo que queda glosado, si es 0, la glosa se levanta.
 
     # Calcular el valor neto a pagar
@@ -353,6 +366,13 @@ def reporte_auditoria_detalle(request, factura_id):
         'factura': factura,
         'paciente': factura.paciente,
         'glosas': glosas,
+        'glosas_pendientes': glosas_pendientes,
+        'glosas_respondidas_ips': glosas_respondidas_ips,
+        'glosas_aceptadas_et': glosas_aceptadas_et,
+        'glosas_rechazadas_et': glosas_rechazadas_et,
+        'glosas_devueltas_ips': glosas_devueltas_ips,
+        'glosas_indefinidas': glosas_indefinidas,
+        'valor_total_glosado_original': valor_total_glosado_original,
         'rips_consultas': rips_consultas,
         'rips_medicamentos': rips_medicamentos,
         'rips_procedimientos': rips_procedimientos,
@@ -647,3 +667,30 @@ def devolver_factura_manual(request, factura_id):
         messages.success(request, f"La factura {factura.numero} ha sido devuelta exitosamente.")
     
     return redirect('auditoria:lista_radicados')
+
+@login_required
+@role_required('IPS')
+def mis_radicados(request):
+    """
+    Vista específica para IPS que muestra solo sus propios radicados
+    """
+    # Obtener solo las facturas de la IPS actual
+    facturas = Factura.objects.filter(
+        ips=request.user.profile
+    ).select_related('ips', 'lote', 'auditor', 'paciente').order_by('-fecha_radicacion')
+
+    # Contadores para la UI
+    total_facturas = facturas.count()
+    total_auditadas = facturas.filter(estado='Auditada').count()
+    total_pendientes = facturas.exclude(estado='Auditada').count()
+    total_con_glosas = facturas.filter(estado='Con Glosas').count()
+
+    context = {
+        'facturas': facturas,
+        'total_facturas': total_facturas,
+        'total_auditadas': total_auditadas,
+        'total_pendientes': total_pendientes,
+        'total_con_glosas': total_con_glosas,
+    }
+    
+    return render(request, 'auditoria/mis_radicados.html', context)

@@ -56,6 +56,11 @@ class FacturaForm(forms.ModelForm):
         widget=forms.DateInput(attrs={'type': 'date'})
     )
     archivo_pdf = forms.FileField(label="Archivo PDF de la Factura", required=True)
+    eps = forms.ModelChoiceField(
+        queryset=Profile.objects.filter(role='ET'),
+        required=True,
+        label="EPS (Entidad Territorial)"
+    )
 
     class Meta:
         model = Factura

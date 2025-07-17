@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+{% block title %}Mis Facturas Radicadas{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <h2 class="mb-3">
+        <i class="bi bi-file-earmark-text"></i>
+        Mis Facturas Radicadas
+      </h2>
+      <p class="text-muted">Aquí puedes ver todas las facturas que has radicado y acceder a sus reportes.</p>
+    </div>
+  </div>
+
+  <!-- Tarjetas de resumen -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card bg-primary text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between">
+            <div>
+              <h4 class="card-title">{{ total_facturas }}</h4>
+              <p class="card-text">Total Facturas</p>
+            </div>
+            <div class="align-self-center">
+              <i class="bi bi-file-earmark-text fs-1"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card bg-success text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between">
+            <div>
+              <h4 class="card-title">{{ total_auditadas }}</h4>
+              <p class="card-text">Auditadas</p>
+            </div>
+            <div class="align-self-center">
+              <i class="bi bi-check-circle fs-1"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card bg-warning text-dark">
+        <div class="card-body">
+          <div class="d-flex justify-content-between">
+            <div>
+              <h4 class="card-title">{{ total_pendientes }}</h4>
+              <p class="card-text">Pendientes</p>
+            </div>
+            <div class="align-self-center">
+              <i class="bi bi-clock fs-1"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card bg-info text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between">
+            <div>
+              <h4 class="card-title">{{ total_con_glosas }}</h4>
+              <p class="card-text">Con Glosas</p>
+            </div>
+            <div class="align-self-center">
+              <i class="bi bi-exclamation-triangle fs-1"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla de facturas -->
+  <div class="card">
+    <div class="card-header">
+      <h5 class="mb-0">
+        <i class="bi bi-table"></i>
+        Lista de Facturas
+      </h5>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead class="table-light">
+            <tr>
+              <th>
+                <i class="bi bi-hash"></i>
+                Número de Factura
+              </th>
+              <th>
+                <i class="bi bi-calendar"></i>
+                Fecha de Radicación
+              </th>
+              <th>
+                <i class="bi bi-tag"></i>
+                Estado
+              </th>
+              <th>
+                <i class="bi bi-currency-dollar"></i>
+                Valor Bruto
+              </th>
+              <th>
+                <i class="bi bi-file-earmark-text"></i>
+                Acciones
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for factura in facturas %}
+            <tr>
+              <td>
+                <strong>{{ factura.numero }}</strong>
+                {% if factura.cufe %}
+                  <br>
+                  <small class="text-muted">CUFE: {{ factura.cufe|truncatechars:20 }}</small>
+                {% endif %}
+              </td>
+              <td>
+                <i class="bi bi-calendar-event"></i>
+                {{ factura.fecha_radicacion|date:"d/m/Y" }}
+              </td>
+              <td>
+                <span class="badge 
+                  {% if factura.estado == 'Radicada' %}bg-primary
+                  {% elif factura.estado == 'En Auditoria' %}bg-warning text-dark
+                  {% elif factura.estado == 'Auditada' %}bg-success
+                  {% elif factura.estado == 'Con Glosas' %}bg-info
+                  {% elif factura.estado == 'Devuelta' %}bg-danger
+                  {% else %}bg-secondary{% endif %}">
+                  <i class="bi 
+                    {% if factura.estado == 'Radicada' %}bi-send
+                    {% elif factura.estado == 'En Auditoria' %}bi-clock
+                    {% elif factura.estado == 'Auditada' %}bi-check-circle
+                    {% elif factura.estado == 'Con Glosas' %}bi-exclamation-triangle
+                    {% elif factura.estado == 'Devuelta' %}bi-x-circle
+                    {% else %}bi-question-circle{% endif %}">
+                  </i>
+                  {{ factura.get_estado_display }}
+                </span>
+              </td>
+              <td>
+                <strong>${{ factura.valor_bruto|floatformat:2 }}</strong>
+                {% if factura.lote %}
+                  <br>
+                  <small class="text-muted">Lote: {{ factura.lote.numero_lote }}</small>
+                {% endif %}
+              </td>
+              <td>
+                <div class="btn-group" role="group">
+                  <a href="{% url 'auditoria:reporte_auditoria_detalle' factura.id %}" 
+                     class="btn btn-outline-primary btn-sm" 
+                     title="Ver Reporte Detallado">
+                    <i class="bi bi-file-earmark-text"></i>
+                    Reporte
+                  </a>
+                  
+                  {% if factura.estado == 'Con Glosas' %}
+                    <a href="{% url 'auditoria:lista_glosas' factura.id %}" 
+                       class="btn btn-outline-warning btn-sm"
+                       title="Ver Glosas">
+                      <i class="bi bi-exclamation-triangle"></i>
+                      Glosas
+                    </a>
+                  {% endif %}
+                  
+                  {% if factura.estado == 'Devuelta' %}
+                    <span class="badge bg-danger">
+                      <i class="bi bi-x-circle"></i>
+                      Devuelta
+                    </span>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="text-center py-4">
+                <div class="text-muted">
+                  <i class="bi bi-inbox fs-1"></i>
+                  <p class="mt-2">No tienes facturas radicadas aún.</p>
+                  <p class="small">Las facturas que radiques aparecerán aquí.</p>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Información adicional -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="alert alert-info">
+        <h6><i class="bi bi-info-circle"></i> Información Importante:</h6>
+        <ul class="mb-0">
+          <li><strong>Radicada:</strong> Tu factura ha sido enviada a la ET para auditoría.</li>
+          <li><strong>En Auditoría:</strong> La ET está revisando tu factura.</li>
+          <li><strong>Con Glosas:</strong> La ET ha encontrado observaciones. Revisa y responde las glosas.</li>
+          <li><strong>Auditada:</strong> Tu factura ha sido aprobada para pago.</li>
+          <li><strong>Devuelta:</strong> Tu factura requiere correcciones antes de ser procesada.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.card {
+  border: none;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  transition: box-shadow 0.15s ease-in-out;
+}
+
+.card:hover {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.table th {
+  border-top: none;
+  font-weight: 600;
+  color: #495057;
+}
+
+.table td {
+  vertical-align: middle;
+}
+
+.btn-group .btn {
+  margin-right: 0.25rem;
+}
+
+.badge {
+  font-size: 0.75em;
+}
+
+.alert-info {
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+  color: #495057;
+}
+</style>
+{% endblock %} 
