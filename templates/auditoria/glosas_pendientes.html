@@ -105,10 +105,17 @@
                             <span class="badge bg-danger">{{ glosa.get_estado_display }}</span>
                         {% elif glosa.estado == 'Devuelta a IPS' %}
                             <span class="badge bg-secondary">{{ glosa.get_estado_display }}</span>
+                        {% elif glosa.estado == 'Respondida IPS Segunda' %}
+                            <span class="badge bg-warning text-dark">{{ glosa.get_estado_display }}</span>
+                        {% elif glosa.estado == 'En Conciliación' %}
+                            <span class="badge bg-dark">{{ glosa.get_estado_display }}</span>
+                        {% elif glosa.estado == 'Conciliada' %}
+                            <span class="badge bg-success">{{ glosa.get_estado_display }}</span>
                         {% else %}
                             <span class="badge bg-primary">{{ glosa.get_estado_display }}</span>
                         {% endif %}
-                    </td> <td>{{ glosa.fecha_glosa|date:"d/m/Y" }}</td>
+                    </td> 
+                    <td>{{ glosa.fecha_glosa|date:"d/m/Y" }}</td>
                     {% if request.user.profile.role == 'ET' or request.user.profile.role == 'AUDITOR' %}
                       <td>{{ glosa.fecha_respuesta|date:"d/m/Y"|default:"N/A" }}</td>
                       <td>{% if glosa.aceptada %}Sí{% elif glosa.aceptada == False %}No{% else %}N/A{% endif %}</td>
@@ -117,19 +124,36 @@
                     <td>
                         <div class="btn-group" role="group">
                             {% if request.user.profile.role == 'IPS' %}
-                                {% if glosa.estado == 'Pendiente' or glosa.estado == 'Devuelta a IPS' %}
+                                {% if glosa.estado == 'Pendiente' %}
                                     <a href="{% url 'auditoria:responder_glosa' glosa.id %}" 
                                        class="btn btn-primary btn-sm">
                                         Responder
                                     </a>
+                                {% elif glosa.estado == 'Devuelta a IPS' %}
+                                    <a href="{% url 'auditoria:responder_glosa_segunda' glosa.id %}" 
+                                       class="btn btn-warning btn-sm">
+                                        Segunda Respuesta
+                                    </a>
+                                {% elif glosa.estado == 'En Conciliación' %}
+                                    <span class="badge bg-dark">En Conciliación</span>
                                 {% else %}
-                                    <button class="btn btn-secondary btn-sm" disabled>Respondida</button>
+                                    <button class="btn btn-secondary btn-sm" disabled>No Aplicable</button>
                                 {% endif %}
                             {% elif request.user.profile.role == 'ET' or request.user.profile.role == 'AUDITOR' %}
-                                {% if glosa.estado == 'Respondida IPS' or glosa.estado == 'Devuelta a IPS' %}
+                                {% if glosa.estado == 'Respondida IPS' %}
                                     <a href="{% url 'auditoria:decidir_respuesta_glosa' glosa.id %}" 
                                        class="btn btn-warning btn-sm">
                                         Decidir
+                                    </a>
+                                {% elif glosa.estado == 'Respondida IPS Segunda' %}
+                                    <a href="{% url 'auditoria:decidir_respuesta_glosa_segunda' glosa.id %}" 
+                                       class="btn btn-danger btn-sm">
+                                        Decisión Final
+                                    </a>
+                                {% elif glosa.estado == 'En Conciliación' %}
+                                    <a href="{% url 'auditoria:conciliacion_glosa' glosa.id %}" 
+                                       class="btn btn-dark btn-sm">
+                                        Conciliación
                                     </a>
                                 {% else %}
                                     <button class="btn btn-secondary btn-sm" disabled>No Aplicable</button>

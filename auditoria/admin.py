@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Glosa, TipoGlosa, SubtipoGlosa, SubCodigoGlosa, TipoGlosaRespuestaIPS, SubtipoGlosaRespuestaIPS, HistorialGlosa
+from .models import Glosa, TipoGlosa, SubtipoGlosa, SubCodigoGlosa, TipoGlosaRespuestaIPS, SubtipoGlosaRespuestaIPS, HistorialGlosa, Conciliacion
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
 
@@ -54,6 +54,13 @@ class HistorialGlosaResource(resources.ModelResource):
         export_order = ('id', 'glosa', 'usuario', 'accion', 'detalles', 'fecha_cambio')
 
 
+class ConciliacionResource(resources.ModelResource):
+    class Meta:
+        model = Conciliacion
+        import_id_fields = ('id',)
+        export_order = ('id', 'glosa', 'estado', 'fecha_inicio', 'fecha_fin', 'iniciada_por')
+
+
 # Admin classes con import-export
 @admin.register(TipoGlosa)
 class TipoGlosaAdmin(ImportExportModelAdmin):
@@ -96,10 +103,22 @@ class SubtipoGlosaRespuestaIPSAdmin(ImportExportModelAdmin):
 @admin.register(Glosa)
 class GlosaAdmin(ImportExportModelAdmin):
     resource_class = GlosaResource
+    list_display = ('id', 'factura', 'estado', 'valor_glosado', 'fecha_glosa')
+    list_filter = ('estado', 'fecha_glosa', 'factura__ips')
+    search_fields = ('factura__numero', 'descripcion')
 
 
 @admin.register(HistorialGlosa)
 class HistorialGlosaAdmin(ImportExportModelAdmin):
     resource_class = HistorialGlosaResource
-    list_display = ('id', 'glosa', 'usuario',)
+    list_display = ('id', 'glosa', 'usuario', 'accion', 'fecha_cambio')
     list_filter = ('accion', 'fecha_cambio', 'usuario')
+
+
+@admin.register(Conciliacion)
+class ConciliacionAdmin(ImportExportModelAdmin):
+    resource_class = ConciliacionResource
+    list_display = ('id', 'glosa', 'estado', 'fecha_inicio', 'fecha_fin', 'iniciada_por')
+    list_filter = ('estado', 'fecha_inicio', 'iniciada_por')
+    search_fields = ('glosa__factura__numero', 'respuesta_definitiva_et')
+    readonly_fields = ('fecha_inicio', 'fecha_fin')

@@ -30,6 +30,14 @@
                         <dt class="col-sm-4">IPS Aceptó Glosa:</dt>
                         <dd class="col-sm-8">{% if glosa.aceptada %}Sí{% elif glosa.aceptada == False %}No{% else %}N/A{% endif %}</dd>
 
+                        {% if glosa.aceptada == False and glosa.valor_aceptado_et %}
+                        <dt class="col-sm-4">Valor Parcial Propuesto por IPS:</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-info">${{ glosa.valor_aceptado_et|floatformat:2 }}</span>
+                            <br><small class="text-muted">Valor original: ${{ glosa.valor_glosado|floatformat:2 }}</small>
+                        </dd>
+                        {% endif %}
+
                         <dt class="col-sm-4">Tipo de Respuesta:</dt>
                         <dd class="col-sm-8">
                             {% if glosa.tipo_glosa_respuesta %}
@@ -56,24 +64,62 @@
                     <h5 class="mt-4">Tomar Decisión (ET/Auditor)</h5>
                     <form method="post">
                         {% csrf_token %}
+                        
+                        <!-- Códigos de Respuesta de ET -->
+                        <div class="mb-3">
+                            <label for="tipo_glosa_respuesta_et" class="form-label">Tipo de Respuesta ET:</label>
+                            <select class="form-select" id="tipo_glosa_respuesta_et" name="tipo_glosa_respuesta_et" required>
+                                <option value="">Seleccione un tipo de respuesta</option>
+                                {% for tipo in tipos_respuesta %}
+                                    <option value="{{ tipo.pk }}">{{ tipo.codigo }} - {{ tipo.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="subtipo_glosa_respuesta_et" class="form-label">Subtipo de Respuesta ET:</label>
+                            <select class="form-select" id="subtipo_glosa_respuesta_et" name="subtipo_glosa_respuesta_et" required>
+                                <option value="">Seleccione un subtipo</option>
+                            </select>
+                        </div>
+
+                        <!-- Pago Parcial -->
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="pago_parcial" name="pago_parcial">
+                                <label class="form-check-label" for="pago_parcial">
+                                    <strong>Activar Pago Parcial</strong>
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">Si activa esta opción, puede especificar un nuevo valor para la glosa.</small>
+                        </div>
+
+                        <div class="mb-3" id="valor_parcial_container" style="display: none;">
+                            <label for="valor_parcial" class="form-label">Nuevo Valor de la Glosa:</label>
+                            <input type="number" class="form-control" id="valor_parcial" name="valor_parcial" step="0.01" placeholder="Ej: 50000.00">
+                            <small class="form-text text-muted">Valor original: ${{ glosa.valor_glosado|floatformat:2 }}</small>
+                        </div>
+
                         <div class="mb-3">
                             <label for="decision_et" class="form-label">Decisión:</label>
                             <select class="form-select" id="decision_et" name="decision_et" required>
                                 <option value="">Seleccione una opción</option>
                                 <option value="aceptar_respuesta_ips">Aceptar Respuesta de IPS (Levantar Glosa)</option>
-                                <option value="rechazar_respuesta_ips">Rechazar Respuesta de IPS (Glosa Definitiva)</option>
-                                <option value="devolver_a_ips">Devolver a IPS (Reevaluación)</option>
+                                <option value="rechazar_respuesta_ips">Rechazar Respuesta de IPS (Devolver para Segunda Respuesta)</option>
                             </select>
                         </div>
+                        
                         <div class="mb-3">
                             <label for="justificacion_et" class="form-label">Justificación de la Decisión (Opcional):</label>
                             <textarea class="form-control" id="justificacion_et" name="justificacion_et" rows="3"></textarea>
                         </div>
+                        
                         <div class="mb-3">
                             <label for="valor_aceptado_et" class="form-label">Valor Final Aceptado por ET (Solo si aplica):</label>
                             <input type="number" class="form-control" id="valor_aceptado_et" name="valor_aceptado_et" step="0.01" placeholder="Ej: 0.00 para glosa levantada, o el valor final si es parcial">
                             <small class="form-text text-muted">Deja en blanco si la decisión no implica un ajuste de valor.</small>
                         </div>
+                        
                         <button type="submit" class="btn btn-success">Guardar Decisión</button>
                         <a href="{% url 'auditoria:glosas_pendientes' %}" class="btn btn-secondary">Cancelar</a>
                     </form>
@@ -82,4 +128,47 @@
         </div>
     </div>
 </div>
+
+<script>
+// Script para manejar el checkbox de pago parcial
+document.getElementById('pago_parcial').addEventListener('change', function() {
+    const valorParcialContainer = document.getElementById('valor_parcial_container');
+    const valorParcialInput = document.getElementById('valor_parcial');
+    
+    if (this.checked) {
+        valorParcialContainer.style.display = 'block';
+        valorParcialInput.required = true;
+    } else {
+        valorParcialContainer.style.display = 'none';
+        valorParcialInput.required = false;
+        valorParcialInput.value = '';
+    }
+});
+
+// Script para cargar subtipos dinámicamente
+document.getElementById('tipo_glosa_respuesta_et').addEventListener('change', function() {
+    const tipoId = this.value;
+    const subtipoSelect = document.getElementById('subtipo_glosa_respuesta_et');
+    
+    // Limpiar opciones actuales
+    subtipoSelect.innerHTML = '<option value="">Seleccione un subtipo</option>';
+    
+    if (tipoId) {
+        // Hacer petición AJAX para obtener subtipos
+        fetch(`/auditoria/api/subtipos_respuesta/${tipoId}/`)
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(subtipo => {
+                    const option = document.createElement('option');
+                    option.value = subtipo.pk;
+                    option.textContent = `${subtipo.codigo} - ${subtipo.nombre}`;
+                    subtipoSelect.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error cargando subtipos:', error);
+            });
+    }
+});
+</script>
 {% endblock %} 

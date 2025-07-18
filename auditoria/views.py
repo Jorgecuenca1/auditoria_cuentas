@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect, get_object_or_404
 from facturacion.models import Factura, Paciente, RipsConsulta, RipsMedicamento, RipsProcedimiento, RipsHospitalizacion, RipsOtroServicio, Devolucion, CodigoDevolucion, SubcodigoDevolucion, Lote
-from .models import Glosa, TipoGlosa, SubtipoGlosa, SubCodigoGlosa, TipoGlosaRespuestaIPS, SubtipoGlosaRespuestaIPS, HistorialGlosa
+from .models import Glosa, TipoGlosa, SubtipoGlosa, SubCodigoGlosa, TipoGlosaRespuestaIPS, SubtipoGlosaRespuestaIPS, HistorialGlosa, Conciliacion
 from .forms import TipoAuditoriaForm
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
@@ -457,6 +457,32 @@ def responder_glosa(request, glosa_id):
         else:
             glosa.aceptada = None # No definido por la IPS
 
+        # Procesar valor parcial si la IPS lo propone
+        pago_parcial_ips = request.POST.get('pago_parcial_ips') == 'on'
+        valor_parcial_ips = request.POST.get('valor_parcial_ips')
+        
+        if pago_parcial_ips and valor_parcial_ips and glosa.aceptada == False:
+            try:
+                glosa.valor_aceptado_et = Decimal(valor_parcial_ips)
+                # Registrar cambio de valor en historial
+                HistorialGlosa.registrar_cambio(
+                    glosa=glosa,
+                    accion='valor_parcial_propuesto_ips',
+                    usuario=request.user,
+                    valor_anterior=glosa.valor_glosado,
+                    valor_nuevo=glosa.valor_aceptado_et,
+                    descripcion_cambio=f"IPS propone valor parcial. Valor original: ${glosa.valor_glosado}, Valor propuesto: ${glosa.valor_aceptado_et}",
+                    request=request
+                )
+            except (ValueError, TypeError):
+                messages.error(request, "El valor parcial debe ser un número válido.")
+                context = {
+                    'glosa': glosa,
+                    'tipos_respuesta': tipos_respuesta,
+                    'subtipos_respuesta': subtipos_respuesta,
+                }
+                return render(request, 'auditoria/responder_glosa.html', context)
+
         estado_anterior = glosa.estado
         glosa.estado = 'Respondida IPS' # Cambiar estado a respondida por IPS
         glosa.fecha_respuesta = timezone.now().date()
@@ -492,45 +518,95 @@ def decidir_respuesta_glosa(request, glosa_id):
     # Solo permitir decidir si la glosa está en estado Respondida IPS o Devuelta a IPS
     if glosa.estado not in ['Respondida IPS', 'Devuelta a IPS']:
         messages.error(request, "Esta glosa no está en un estado que requiera una decisión de la ET.")
-        return redirect('auditoria:glosas_pendientes') # O la lista de glosas para ET
+        return redirect('auditoria:glosas_pendientes')
+
+    # Obtener tipos de respuesta para ET (usando los mismos que IPS)
+    tipos_respuesta = TipoGlosaRespuestaIPS.objects.all()
+    subtipos_respuesta = SubtipoGlosaRespuestaIPS.objects.all()
 
     if request.method == 'POST':
         decision_et = request.POST.get('decision_et')
         justificacion_et = request.POST.get('justificacion_et', '')
         valor_aceptado_et_input = request.POST.get('valor_aceptado_et')
+        tipo_glosa_respuesta_et = request.POST.get('tipo_glosa_respuesta_et')
+        subtipo_glosa_respuesta_et = request.POST.get('subtipo_glosa_respuesta_et')
+        pago_parcial = request.POST.get('pago_parcial') == 'on'
+        valor_parcial = request.POST.get('valor_parcial')
 
         # Guardar estado anterior para el historial
         estado_anterior = glosa.estado
         valor_anterior = glosa.valor_aceptado_et
 
+        # Validar que se proporcionen los códigos de respuesta
+        if not tipo_glosa_respuesta_et:
+            messages.error(request, "Debe seleccionar un tipo de respuesta.")
+            context = {
+                'glosa': glosa,
+                'tipos_respuesta': tipos_respuesta,
+                'subtipos_respuesta': subtipos_respuesta,
+            }
+            return render(request, 'auditoria/decidir_respuesta_glosa.html', context)
+
+        # Procesar pago parcial si está activado
+        valor_anterior_parcial = glosa.valor_aceptado_et
+        if pago_parcial and valor_parcial:
+            try:
+                nuevo_valor = Decimal(valor_parcial)
+                glosa.valor_aceptado_et = nuevo_valor
+                # Registrar cambio de valor en historial
+                HistorialGlosa.registrar_cambio(
+                    glosa=glosa,
+                    accion='pago_parcial_activado_et',
+                    usuario=request.user,
+                    valor_anterior=valor_anterior_parcial or glosa.valor_glosado,
+                    valor_nuevo=glosa.valor_aceptado_et,
+                    descripcion_cambio=f"ET activa pago parcial. Valor anterior: ${valor_anterior_parcial or glosa.valor_glosado}, Nuevo valor: ${glosa.valor_aceptado_et}",
+                    request=request
+                )
+            except (ValueError, TypeError):
+                messages.error(request, "El valor parcial debe ser un número válido.")
+                context = {
+                    'glosa': glosa,
+                    'tipos_respuesta': tipos_respuesta,
+                    'subtipos_respuesta': subtipos_respuesta,
+                }
+                return render(request, 'auditoria/decidir_respuesta_glosa.html', context)
+
+        # Guardar códigos de respuesta de ET
+        glosa.tipo_glosa_respuesta_et_id = tipo_glosa_respuesta_et
+        glosa.subtipo_glosa_respuesta_et_id = subtipo_glosa_respuesta_et
+
         if decision_et == 'aceptar_respuesta_ips':
             glosa.estado = 'Aceptada ET'
-            glosa.valor_aceptado_et = Decimal('0.00') # ET acepta el rechazo de IPS, glosa se levanta, NO se descuenta del valor bruto
+            glosa.valor_aceptado_et = Decimal('0.00')  # ET acepta el rechazo de IPS, glosa se levanta
             accion_historial = 'decidida_et'
             descripcion_historial = "Respuesta de la IPS aceptada. Glosa levantada, se debe pagar."
             messages.success(request, "Respuesta de la IPS aceptada. Glosa levantada, se debe pagar.")
         elif decision_et == 'rechazar_respuesta_ips':
-            glosa.estado = 'Rechazada ET'
-            glosa.valor_aceptado_et = glosa.valor_glosado # ET rechaza el rechazo de IPS, glosa sigue válida, SÍ se descuenta del valor bruto
-            accion_historial = 'decidida_et'
-            descripcion_historial = "Respuesta de la IPS rechazada. Glosa válida, se descuenta del valor bruto."
-            messages.warning(request, "Respuesta de la IPS rechazada. Glosa válida, se descuenta del valor bruto.")
-        elif decision_et == 'devolver_a_ips':
-            glosa.estado = 'Devuelta a IPS'
-            glosa.valor_aceptado_et = None # Se reinicia el proceso de aceptación/rechazo
+            glosa.estado = 'Devuelta a IPS'  # Cambiar a devuelta para que IPS responda segunda vez
             accion_historial = 'devuelta_ips'
-            descripcion_historial = "Glosa devuelta a la IPS para reevaluación."
-            messages.info(request, "Glosa devuelta a la IPS para reevaluación.")
+            descripcion_historial = "Respuesta de la IPS rechazada. Glosa devuelta para segunda respuesta."
+            messages.warning(request, "Respuesta de la IPS rechazada. Glosa devuelta para segunda respuesta.")
         else:
             messages.error(request, "Decisión de la ET no válida.")
-            return redirect(request.META.get('HTTP_REFERER', 'auditoria:glosas_pendientes'))
+            context = {
+                'glosa': glosa,
+                'tipos_respuesta': tipos_respuesta,
+                'subtipos_respuesta': subtipos_respuesta,
+            }
+            return render(request, 'auditoria/decidir_respuesta_glosa.html', context)
 
         # Si se proporcionó un valor aceptado específico, úsalo
         if valor_aceptado_et_input:
             try:
                 glosa.valor_aceptado_et = Decimal(valor_aceptado_et_input)
-            except: # En caso de un valor inválido, no se modifica
+            except:  # En caso de un valor inválido, no se modifica
                 pass
+
+        # Preservar el valor parcial de la ET en el campo específico si rechazó la respuesta
+        if decision_et == 'rechazar_respuesta_ips' and glosa.valor_aceptado_et is not None:
+            glosa.valor_parcial_et_primera = glosa.valor_aceptado_et
+            glosa.valor_aceptado_et = None  # Se reinicia el proceso para la segunda ronda
 
         glosa.fecha_decision_et = timezone.now().date()
         glosa.decision_et_justificacion = justificacion_et
@@ -573,10 +649,12 @@ def decidir_respuesta_glosa(request, glosa_id):
             request=request
         )
         
-        return redirect('auditoria:glosas_pendientes') # Redirigir a una lista de glosas relevantes para la ET
+        return redirect('auditoria:glosas_pendientes')
 
     context = {
         'glosa': glosa,
+        'tipos_respuesta': tipos_respuesta,
+        'subtipos_respuesta': subtipos_respuesta,
     }
     return render(request, 'auditoria/decidir_respuesta_glosa.html', context)
 
@@ -600,18 +678,393 @@ def historial_glosa(request, glosa_id):
     return render(request, 'auditoria/historial_glosa.html', context)
 
 @login_required
+@role_required('IPS')
+def responder_glosa_segunda(request, glosa_id):
+    glosa = get_object_or_404(Glosa, id=glosa_id)
+    
+    # Verificar que la glosa esté en estado "Devuelta a IPS"
+    if glosa.estado != 'Devuelta a IPS':
+        messages.error(request, "Esta glosa no está en estado de devolución para responder.")
+        return redirect('auditoria:glosas_pendientes')
+
+    tipos_respuesta = TipoGlosaRespuestaIPS.objects.all()
+    subtipos_respuesta = SubtipoGlosaRespuestaIPS.objects.all()
+
+    if request.method == 'POST':
+        glosa.descripcion_respuesta_segunda = request.POST.get('descripcion_respuesta_segunda')
+        glosa.tipo_glosa_respuesta_segunda_id = request.POST.get('tipo_glosa_respuesta_segunda')
+        glosa.subtipo_glosa_respuesta_segunda_id = request.POST.get('subtipo_glosa_respuesta_segunda')
+        
+        if 'archivo_soporte_respuesta_segunda' in request.FILES:
+            glosa.archivo_soporte_respuesta_segunda = request.FILES['archivo_soporte_respuesta_segunda']
+
+        # La IPS indica si acepta o rechaza la glosa en la segunda respuesta
+        decision_ips = request.POST.get('decision_glosa_segunda')
+        if decision_ips == 'true':
+            glosa.aceptada_segunda = True
+        elif decision_ips == 'false':
+            glosa.aceptada_segunda = False
+        else:
+            glosa.aceptada_segunda = None
+
+        # Procesar valor parcial si se proporciona
+        valor_parcial_segunda = request.POST.get('valor_parcial_segunda')
+        if valor_parcial_segunda:
+            try:
+                glosa.valor_parcial_segunda = Decimal(valor_parcial_segunda)
+            except (ValueError, TypeError):
+                messages.error(request, "El valor parcial debe ser un número válido.")
+                context = {
+                    'glosa': glosa,
+                    'tipos_respuesta': tipos_respuesta,
+                    'subtipos_respuesta': subtipos_respuesta,
+                }
+                return render(request, 'auditoria/responder_glosa_segunda.html', context)
+
+        estado_anterior = glosa.estado
+        
+        # Si la IPS acepta la glosa en la segunda respuesta, finalizar inmediatamente
+        if glosa.aceptada_segunda == True:
+            glosa.estado = 'Aceptada ET'
+            # Usar el último valor disponible: valor parcial de segunda respuesta, valor parcial de ET primera decisión, o 0
+            if glosa.valor_parcial_segunda:
+                glosa.valor_aceptado_et_segunda = glosa.valor_parcial_segunda
+                descripcion_historial = f"IPS acepta glosa en segunda respuesta con valor parcial ${glosa.valor_parcial_segunda}. Glosa finalizada."
+                messages.success(request, f"Glosa aceptada y finalizada con valor parcial ${glosa.valor_parcial_segunda}.")
+            elif glosa.valor_parcial_et_primera:
+                glosa.valor_aceptado_et_segunda = glosa.valor_parcial_et_primera
+                descripcion_historial = f"IPS acepta glosa en segunda respuesta usando valor parcial de ET ${glosa.valor_parcial_et_primera}. Glosa finalizada."
+                messages.success(request, f"Glosa aceptada y finalizada usando valor parcial de ET ${glosa.valor_parcial_et_primera}.")
+            else:
+                glosa.valor_aceptado_et_segunda = Decimal('0.00')
+                descripcion_historial = "IPS acepta glosa en segunda respuesta. Glosa levantada, se debe pagar."
+                messages.success(request, "Glosa aceptada y finalizada. Se debe pagar.")
+        else:
+            # Si la IPS rechaza, continuar con el flujo normal
+            glosa.estado = 'Respondida IPS Segunda'
+            descripcion_historial = f"Segunda respuesta de IPS. Decisión: {'Aceptada' if glosa.aceptada_segunda else 'Rechazada' if glosa.aceptada_segunda == False else 'No definida'}"
+            messages.success(request, "Segunda respuesta a la glosa enviada exitosamente. Pendiente de decisión final de la ET.")
+        
+        glosa.fecha_respuesta_segunda = timezone.now().date()
+        glosa.save()
+        
+        # Registrar en el historial
+        HistorialGlosa.registrar_cambio(
+            glosa=glosa,
+            accion='respuesta_segunda_ips',
+            usuario=request.user,
+            estado_anterior=estado_anterior,
+            estado_nuevo=glosa.estado,
+            descripcion_cambio=descripcion_historial,
+            request=request
+        )
+        
+        # Actualizar la cuenta de cartera si la glosa fue finalizada
+        if glosa.estado == 'Aceptada ET':
+            try:
+                cuenta_cartera = glosa.factura.cuentacartera
+                cuenta_cartera.actualizar_valores_glosas()
+            except Exception as e:
+                # Si hay error, crear cuenta de cartera básica
+                from cartera.models import CuentaCartera
+                CuentaCartera.objects.get_or_create(
+                    factura=glosa.factura,
+                    defaults={
+                        'ips': glosa.factura.ips,
+                        'eps': glosa.factura.eps,
+                        'valor_inicial': glosa.factura.valor_bruto,
+                        'valor_glosado_provisional': Decimal('0'),
+                        'valor_glosado_definitivo': Decimal('0'),
+                        'valor_pagable': glosa.factura.valor_bruto,
+                        'valor_final': glosa.factura.valor_bruto,
+                        'estado_pago': 'Pendiente'
+                    }
+                )
+                cuenta_cartera = glosa.factura.cuentacartera
+                cuenta_cartera.actualizar_valores_glosas()
+        
+        return redirect('auditoria:glosas_pendientes')
+
+    context = {
+        'glosa': glosa,
+        'tipos_respuesta': tipos_respuesta,
+        'subtipos_respuesta': subtipos_respuesta,
+    }
+    return render(request, 'auditoria/responder_glosa_segunda.html', context)
+
+
+@login_required
+@role_required(['ET', 'AUDITOR'])
+def decidir_respuesta_glosa_segunda(request, glosa_id):
+    glosa = get_object_or_404(Glosa, id=glosa_id)
+
+    # Solo permitir decidir si la glosa está en estado "Respondida IPS Segunda"
+    if glosa.estado != 'Respondida IPS Segunda':
+        messages.error(request, "Esta glosa no está en estado de segunda respuesta de IPS.")
+        return redirect('auditoria:glosas_pendientes')
+
+    tipos_respuesta = TipoGlosaRespuestaIPS.objects.all()
+    subtipos_respuesta = SubtipoGlosaRespuestaIPS.objects.all()
+
+    if request.method == 'POST':
+        decision_et = request.POST.get('decision_et_segunda')
+        justificacion_et = request.POST.get('justificacion_et_segunda', '')
+        valor_aceptado_et_input = request.POST.get('valor_aceptado_et_segunda')
+        tipo_glosa_respuesta_et = request.POST.get('tipo_glosa_respuesta_et_segunda')
+        subtipo_glosa_respuesta_et = request.POST.get('subtipo_glosa_respuesta_et_segunda')
+        pago_parcial = request.POST.get('pago_parcial_segunda') == 'on'
+        valor_parcial = request.POST.get('valor_parcial_segunda')
+
+        # Guardar estado anterior para el historial
+        estado_anterior = glosa.estado
+        valor_anterior = glosa.valor_aceptado_et_segunda
+
+        # Validar que se proporcionen los códigos de respuesta
+        if not tipo_glosa_respuesta_et:
+            messages.error(request, "Debe seleccionar un tipo de respuesta.")
+            context = {
+                'glosa': glosa,
+                'tipos_respuesta': tipos_respuesta,
+                'subtipos_respuesta': subtipos_respuesta,
+            }
+            return render(request, 'auditoria/decidir_respuesta_glosa_segunda.html', context)
+
+        # Procesar pago parcial si está activado
+        if pago_parcial and valor_parcial:
+            try:
+                glosa.valor_parcial_segunda = Decimal(valor_parcial)
+                # Registrar cambio de valor en historial
+                HistorialGlosa.registrar_cambio(
+                    glosa=glosa,
+                    accion='pago_parcial_activado',
+                    usuario=request.user,
+                    valor_anterior=glosa.valor_glosado,
+                    valor_nuevo=glosa.valor_parcial_segunda,
+                    descripcion_cambio=f"Pago parcial activado en segunda decisión. Valor anterior: ${glosa.valor_glosado}, Nuevo valor: ${glosa.valor_parcial_segunda}",
+                    request=request
+                )
+            except (ValueError, TypeError):
+                messages.error(request, "El valor parcial debe ser un número válido.")
+                context = {
+                    'glosa': glosa,
+                    'tipos_respuesta': tipos_respuesta,
+                    'subtipos_respuesta': subtipos_respuesta,
+                }
+                return render(request, 'auditoria/decidir_respuesta_glosa_segunda.html', context)
+
+        # Guardar códigos de respuesta de ET
+        glosa.tipo_glosa_respuesta_et_segunda_id = tipo_glosa_respuesta_et
+        glosa.subtipo_glosa_respuesta_et_segunda_id = subtipo_glosa_respuesta_et
+
+        if decision_et == 'aceptar_respuesta_ips':
+            glosa.estado = 'Aceptada ET'
+            # Si la IPS propuso un valor parcial en la segunda respuesta, usarlo
+            if glosa.valor_parcial_segunda:
+                glosa.valor_aceptado_et_segunda = glosa.valor_parcial_segunda
+                descripcion_historial = f"Segunda respuesta de la IPS aceptada con valor parcial ${glosa.valor_parcial_segunda}. Glosa válida."
+                messages.success(request, f"Segunda respuesta de la IPS aceptada con valor parcial ${glosa.valor_parcial_segunda}.")
+            else:
+                glosa.valor_aceptado_et_segunda = Decimal('0.00')  # ET acepta, glosa se levanta
+                descripcion_historial = "Segunda respuesta de la IPS aceptada. Glosa levantada, se debe pagar."
+                messages.success(request, "Segunda respuesta de la IPS aceptada. Glosa levantada, se debe pagar.")
+            accion_historial = 'decision_segunda_et'
+        elif decision_et == 'rechazar_respuesta_ips':
+            glosa.estado = 'En Conciliación'  # Ir directamente a conciliación
+            accion_historial = 'conciliacion_iniciada'
+            descripcion_historial = "Segunda respuesta de la IPS rechazada. Glosa enviada a conciliación por desacuerdo."
+            messages.info(request, "Segunda respuesta de la IPS rechazada. Glosa enviada a conciliación. Se requiere resolución definitiva.")
+            
+            # Crear registro de conciliación automáticamente
+            from .models import Conciliacion
+            Conciliacion.objects.create(
+                glosa=glosa,
+                iniciada_por=request.user,
+                estado='Pendiente'
+            )
+        else:
+            messages.error(request, "Decisión de la ET no válida.")
+            context = {
+                'glosa': glosa,
+                'tipos_respuesta': tipos_respuesta,
+                'subtipos_respuesta': subtipos_respuesta,
+            }
+            return render(request, 'auditoria/decidir_respuesta_glosa_segunda.html', context)
+
+        # Si se proporcionó un valor aceptado específico, úsalo
+        if valor_aceptado_et_input:
+            try:
+                glosa.valor_aceptado_et_segunda = Decimal(valor_aceptado_et_input)
+            except:  # En caso de un valor inválido, no se modifica
+                pass
+
+        glosa.fecha_decision_et_segunda = timezone.now().date()
+        glosa.decision_et_justificacion_segunda = justificacion_et
+        
+        glosa.save()
+        
+        # Actualizar la cuenta de cartera después de la decisión
+        try:
+            cuenta_cartera = glosa.factura.cuentacartera
+            cuenta_cartera.actualizar_valores_glosas()
+        except Exception as e:
+            # Si hay error, crear cuenta de cartera básica
+            from cartera.models import CuentaCartera
+            CuentaCartera.objects.get_or_create(
+                factura=glosa.factura,
+                defaults={
+                    'ips': glosa.factura.ips,
+                    'eps': glosa.factura.eps,
+                    'valor_inicial': glosa.factura.valor_bruto,
+                    'valor_glosado_provisional': Decimal('0'),
+                    'valor_glosado_definitivo': Decimal('0'),
+                    'valor_pagable': glosa.factura.valor_bruto,
+                    'valor_final': glosa.factura.valor_bruto,
+                    'estado_pago': 'Pendiente'
+                }
+            )
+            cuenta_cartera = glosa.factura.cuentacartera
+            cuenta_cartera.actualizar_valores_glosas()
+        
+        # Registrar en el historial
+        HistorialGlosa.registrar_cambio(
+            glosa=glosa,
+            accion=accion_historial,
+            usuario=request.user,
+            estado_anterior=estado_anterior,
+            estado_nuevo=glosa.estado,
+            valor_anterior=valor_anterior,
+            valor_nuevo=glosa.valor_aceptado_et_segunda,
+            descripcion_cambio=f"{descripcion_historial} Justificación: {justificacion_et}",
+            request=request
+        )
+        
+        return redirect('auditoria:glosas_pendientes')
+
+    context = {
+        'glosa': glosa,
+        'tipos_respuesta': tipos_respuesta,
+        'subtipos_respuesta': subtipos_respuesta,
+    }
+    return render(request, 'auditoria/decidir_respuesta_glosa_segunda.html', context)
+
+
+@login_required
+@role_required(['ET', 'AUDITOR'])
+def conciliacion_glosa(request, glosa_id):
+    glosa = get_object_or_404(Glosa, id=glosa_id)
+    
+    # Verificar que la glosa esté en conciliación
+    if glosa.estado != 'En Conciliación':
+        messages.error(request, "Esta glosa no está en proceso de conciliación.")
+        return redirect('auditoria:glosas_pendientes')
+
+    # Obtener o crear la conciliación
+    conciliacion, created = Conciliacion.objects.get_or_create(
+        glosa=glosa,
+        defaults={'iniciada_por': request.user, 'estado': 'Pendiente'}
+    )
+
+    if request.method == 'POST':
+        respuesta_definitiva = request.POST.get('respuesta_definitiva_et')
+        valor_definitivo = request.POST.get('valor_definitivo')
+        documento_et = request.FILES.get('documento_et')
+
+        if not respuesta_definitiva:
+            messages.error(request, "Debe proporcionar una respuesta definitiva.")
+            return render(request, 'auditoria/conciliacion_glosa.html', {'glosa': glosa, 'conciliacion': conciliacion})
+
+        try:
+            valor_definitivo = Decimal(valor_definitivo) if valor_definitivo else Decimal('0.00')
+        except (ValueError, TypeError):
+            messages.error(request, "El valor definitivo debe ser un número válido.")
+            return render(request, 'auditoria/conciliacion_glosa.html', {'glosa': glosa, 'conciliacion': conciliacion})
+
+        # Actualizar conciliación
+        conciliacion.respuesta_definitiva_et = respuesta_definitiva
+        conciliacion.valor_definitivo = valor_definitivo
+        if documento_et:
+            conciliacion.documento_et = documento_et
+        conciliacion.estado = 'Resuelta'
+        conciliacion.fecha_fin = timezone.now()
+        conciliacion.save()
+
+        # Actualizar glosa según la decisión definitiva
+        estado_anterior = glosa.estado
+        if valor_definitivo == 0:
+            glosa.estado = 'Conciliada'
+            glosa.valor_aceptado_et_segunda = Decimal('0.00')  # Glosa levantada
+            descripcion_historial = "Conciliación resuelta: Glosa levantada, se debe pagar."
+            messages.success(request, "Conciliación resuelta: Glosa levantada, se debe pagar.")
+        else:
+            glosa.estado = 'Conciliada'
+            glosa.valor_aceptado_et_segunda = valor_definitivo  # Glosa válida con valor definitivo
+            descripcion_historial = f"Conciliación resuelta: Glosa válida con valor definitivo ${valor_definitivo}."
+            messages.warning(request, f"Conciliación resuelta: Glosa válida con valor definitivo ${valor_definitivo}.")
+
+        glosa.save()
+
+        # Actualizar cartera
+        try:
+            cuenta_cartera = glosa.factura.cuentacartera
+            cuenta_cartera.actualizar_valores_glosas()
+        except Exception as e:
+            from cartera.models import CuentaCartera
+            CuentaCartera.objects.get_or_create(
+                factura=glosa.factura,
+                defaults={
+                    'ips': glosa.factura.ips,
+                    'eps': glosa.factura.eps,
+                    'valor_inicial': glosa.factura.valor_bruto,
+                    'valor_glosado_provisional': Decimal('0'),
+                    'valor_glosado_definitivo': Decimal('0'),
+                    'valor_pagable': glosa.factura.valor_bruto,
+                    'valor_final': glosa.factura.valor_bruto,
+                    'estado_pago': 'Pendiente'
+                }
+            )
+            cuenta_cartera = glosa.factura.cuentacartera
+            cuenta_cartera.actualizar_valores_glosas()
+
+        # Registrar en el historial
+        HistorialGlosa.registrar_cambio(
+            glosa=glosa,
+            accion='conciliacion_resuelta',
+            usuario=request.user,
+            estado_anterior=estado_anterior,
+            estado_nuevo=glosa.estado,
+            valor_anterior=glosa.valor_aceptado_et_segunda,
+            valor_nuevo=valor_definitivo,
+            descripcion_cambio=f"{descripcion_historial} Respuesta definitiva: {respuesta_definitiva}",
+            request=request
+        )
+
+        return redirect('auditoria:glosas_pendientes')
+
+    return render(request, 'auditoria/conciliacion_glosa.html', {'glosa': glosa, 'conciliacion': conciliacion})
+
+
+@login_required
 @role_required(['IPS', 'ET', 'AUDITOR'])
 def glosas_pendientes(request):
-    glosas = Glosa.objects.filter(estado__in=["Pendiente", "Respondida IPS", "Devuelta a IPS"]) # Mostrar glosas relevantes para IPS y ET
+    # Filtrar glosas según el rol del usuario y estado
     if request.user.profile.role == 'IPS':
-        glosas = glosas.filter(ips=request.user.profile)
+        # IPS ve sus glosas pendientes, devueltas y en conciliación
+        glosas = Glosa.objects.filter(
+            ips=request.user.profile,
+            estado__in=["Pendiente", "Devuelta a IPS", "En Conciliación"]
+        )
     elif request.user.profile.role == 'EPS':
-        glosas = glosas.filter(factura__eps=request.user.profile)
-    elif request.user.profile.role == 'ET' or request.user.profile.role == 'AUDITOR':
-        # ET/Auditor ve glosas que le competen decidir o las que están en proceso
-        glosas = glosas.filter(factura__auditor=request.user).exclude(estado__in=['Aceptada ET', 'Rechazada ET', 'Indefinida']) # O ajusta el filtro según lo que quieras que vea el auditor/ET
-        # Si la ET debe ver todas las glosas para decidir sobre ellas, el filtro cambia
-        # Por ahora, se mostrarán las que aún no tienen una decisión final de la ET
+        # EPS ve glosas de sus facturas
+        glosas = Glosa.objects.filter(
+            factura__eps=request.user.profile,
+            estado__in=["Pendiente", "Respondida IPS", "Devuelta a IPS", "Respondida IPS Segunda", "En Conciliación"]
+        )
+    elif request.user.profile.role in ['ET', 'AUDITOR']:
+        # ET/Auditor ve glosas que debe decidir
+        glosas = Glosa.objects.filter(
+            factura__auditor=request.user,
+            estado__in=['Respondida IPS', 'Respondida IPS Segunda', 'En Conciliación']
+        ).exclude(estado__in=['Aceptada ET', 'Rechazada ET', 'Rechazada ET Segunda', 'Conciliada', 'Indefinida'])
 
     glosas = glosas.order_by('-fecha_glosa')
     return render(request, 'auditoria/glosas_pendientes.html', {'glosas': glosas})

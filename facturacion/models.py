@@ -112,7 +112,7 @@ class Factura(models.Model):
         return f"Factura {self.numero} (UUID: {self.codigo_uuid}) CUFE {self.cufe}"
 
 class UsuariosNoAptos(models.Model):
-    cedula = models.CharField(max_length=200, unique=True, help_text="Número de cédula del usuario no apto")
+    cedula = models.CharField(max_length=200, help_text="Número de cédula del usuario no apto")
     nombre = models.CharField(max_length=200, help_text="Nombre completo del usuario no apto")
     fecha_registro = models.DateTimeField(auto_now_add=True,blank=True, null=True)
 
@@ -128,28 +128,7 @@ class UsuariosNoAptos(models.Model):
     fecha_nacimiento = models.CharField(max_length=200, blank=True, null=True)
     genero = models.CharField(max_length=200, blank=True, null=True)
     pais_residencia = models.CharField(max_length=200, blank=True, null=True)
-    tipo_afiliado = models.CharField(max_length=200, blank=True, null=True)
-    parentesco = models.CharField(max_length=200, blank=True, null=True)
-    grupo_poblacional = models.CharField(max_length=200, blank=True, null=True)
-    nivel_sisben_iii = models.CharField(max_length=200, blank=True, null=True)
-    ficha_sisben = models.CharField(max_length=200, blank=True, null=True)
-    condicion_beneficiario = models.CharField(max_length=200, blank=True, null=True)
-    departamento_residencia = models.CharField(max_length=200, blank=True, null=True)
-    municipio_residencia = models.CharField(max_length=200, blank=True, null=True)
-    zona_afiliacion = models.CharField(max_length=200, blank=True, null=True)
-    fecha_afiliacion_sgsss = models.CharField(max_length=200, blank=True, null=True)
-    fecha_inicio_afiliacion = models.CharField(max_length=200, blank=True, null=True)
-    modalidad_subsidio = models.CharField(max_length=200, blank=True, null=True)
-    estado_afiliacion = models.CharField(max_length=200, blank=True, null=True)
-    fecha_inicio_condicion_afiliacion = models.CharField(max_length=200, blank=True, null=True)
-    fecha_inicio_ultimo_tramo_condicion = models.CharField(max_length=200, blank=True, null=True)
-    serial_bdua_cotizante = models.CharField(max_length=200, blank=True, null=True)
-    portabilidad_afiliado = models.CharField(max_length=200, blank=True, null=True)
-    codigo_ips_primaria = models.CharField(max_length=200, blank=True, null=True)
-    metodologia_grupo_poblacional = models.CharField(max_length=200, blank=True, null=True)
-    nivel_sisben_iv = models.CharField(max_length=200, blank=True, null=True)
-    nivel_sisben_iii_iv_listados = models.CharField(max_length=200, blank=True, null=True)
-    tipologia_especial = models.CharField(max_length=200, blank=True, null=True)
+
 
     def __str__(self):
         return f"{self.nombre} ({self.cedula})"

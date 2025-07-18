@@ -16,6 +16,11 @@ urlpatterns = [
     path('devoluciones/', views.lista_devoluciones, name='lista_devoluciones'),
     path('factura/<int:factura_id>/devolver/', views.devolver_factura_manual, name='devolver_factura_manual'),
 
+    # Nuevas URLs para el flujo completo de glosas
+    path('glosa/<int:glosa_id>/responder-segunda/', views.responder_glosa_segunda, name='responder_glosa_segunda'),
+    path('glosa/<int:glosa_id>/decidir-segunda/', views.decidir_respuesta_glosa_segunda, name='decidir_respuesta_glosa_segunda'),
+    path('glosa/<int:glosa_id>/conciliacion/', views.conciliacion_glosa, name='conciliacion_glosa'),
+
     # URLs para Reportes
     path('reportes/glosas/', views.reporte_glosas, name='reporte_glosas'),
     path('reportes/cartera/', views.reporte_cartera, name='reporte_cartera'),

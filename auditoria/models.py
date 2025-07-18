@@ -70,9 +70,13 @@ class Glosa(models.Model):
         ("Aceptada ET", "Aceptada por ET"),
         ("Rechazada ET", "Rechazada por ET"),
         ("Devuelta a IPS", "Devuelta a IPS (Reevaluación)"),
+        ("Respondida IPS Segunda", "Segunda Respuesta de IPS"),
+        ("Rechazada ET Segunda", "Segunda Rechazo de ET"),
+        ("En Conciliación", "En Proceso de Conciliación"),
+        ("Conciliada", "Conciliada"),
         ("Indefinida", "Glosa Indefinida"),
     ]
-    estado = models.CharField(max_length=20, choices=ESTADO_GLOSA_CHOICES, default="Pendiente")
+    estado = models.CharField(max_length=30, choices=ESTADO_GLOSA_CHOICES, default="Pendiente")
     fecha_glosa = models.DateField(auto_now_add=True)
 
     # Campos para la respuesta de la glosa por parte de la IPS
@@ -88,6 +92,31 @@ class Glosa(models.Model):
     fecha_decision_et = models.DateField(null=True, blank=True)
     valor_aceptado_et = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Valor de la glosa que se descuenta del valor bruto. Si es 0, la glosa se levanta y no se descuenta.")
     decision_et_justificacion = models.TextField(blank=True, null=True, help_text="Justificación de la decisión de la ET o motivo de la devolución.")
+    valor_parcial_et_primera = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Valor parcial establecido por ET en la primera decisión")
+    
+    # Códigos de respuesta de la ET (usando los mismos modelos que IPS)
+    tipo_glosa_respuesta_et = models.ForeignKey(TipoGlosaRespuestaIPS, on_delete=models.SET_NULL, null=True, blank=True, related_name='respuestas_et')
+    subtipo_glosa_respuesta_et = models.ForeignKey(SubtipoGlosaRespuestaIPS, on_delete=models.SET_NULL, null=True, blank=True, related_name='respuestas_et')
+
+    # Campos para pago parcial
+    pago_parcial = models.BooleanField(default=False, help_text="Indica si se aplica pago parcial")
+    valor_parcial = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Nuevo valor cuando se aplica pago parcial")
+
+    # Campos para segunda respuesta de IPS
+    descripcion_respuesta_segunda = models.TextField(blank=True, null=True)
+    archivo_soporte_respuesta_segunda = models.FileField(upload_to='respuestas_glosas/', blank=True, null=True)
+    tipo_glosa_respuesta_segunda = models.ForeignKey(TipoGlosaRespuestaIPS, on_delete=models.SET_NULL, null=True, blank=True, related_name='respuestas_segunda_ips')
+    subtipo_glosa_respuesta_segunda = models.ForeignKey(SubtipoGlosaRespuestaIPS, on_delete=models.SET_NULL, null=True, blank=True, related_name='respuestas_segunda_ips')
+    aceptada_segunda = models.BooleanField(null=True, blank=True)
+    fecha_respuesta_segunda = models.DateField(null=True, blank=True)
+    valor_parcial_segunda = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    # Campos para segunda decisión de ET
+    fecha_decision_et_segunda = models.DateField(null=True, blank=True)
+    valor_aceptado_et_segunda = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    decision_et_justificacion_segunda = models.TextField(blank=True, null=True)
+    tipo_glosa_respuesta_et_segunda = models.ForeignKey(TipoGlosaRespuestaIPS, on_delete=models.SET_NULL, null=True, blank=True, related_name='respuestas_segunda_et')
+    subtipo_glosa_respuesta_et_segunda = models.ForeignKey(SubtipoGlosaRespuestaIPS, on_delete=models.SET_NULL, null=True, blank=True, related_name='respuestas_segunda_et')
 
     def __str__(self):
         return f"Glosa {self.id} a factura {self.factura.numero}"
@@ -107,12 +136,19 @@ class HistorialGlosa(models.Model):
         ('archivo_adjuntado', 'Archivo Adjuntado'),
         ('valor_modificado', 'Valor Modificado'),
         ('justificacion_agregada', 'Justificación Agregada'),
+        ('pago_parcial_activado', 'Pago Parcial Activado'),
+        ('respuesta_segunda_ips', 'Segunda Respuesta de IPS'),
+        ('decision_segunda_et', 'Segunda Decisión de ET'),
+        ('conciliacion_iniciada', 'Conciliación Iniciada'),
+        ('conciliacion_resuelta', 'Conciliación Resuelta'),
+        ('valor_parcial_propuesto_ips', 'Valor Parcial Propuesto por IPS'),
+        ('pago_parcial_activado_et', 'Pago Parcial Activado por ET'),
     ]
     accion = models.CharField(max_length=50, choices=ACCION_CHOICES)
     
     # Detalles del cambio
-    estado_anterior = models.CharField(max_length=20, blank=True, null=True)
-    estado_nuevo = models.CharField(max_length=20, blank=True, null=True)
+    estado_anterior = models.CharField(max_length=30, blank=True, null=True)
+    estado_nuevo = models.CharField(max_length=30, blank=True, null=True)
     valor_anterior = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     valor_nuevo = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     descripcion_cambio = models.TextField(blank=True, null=True)
@@ -164,3 +200,27 @@ class HistorialGlosa(models.Model):
         else:
             ip = request.META.get('REMOTE_ADDR')
         return ip
+
+class Conciliacion(models.Model):
+    glosa = models.OneToOneField(Glosa, on_delete=models.CASCADE, related_name='conciliacion')
+    fecha_inicio = models.DateTimeField(auto_now_add=True)
+    fecha_fin = models.DateTimeField(null=True, blank=True)
+    
+    # Documentos de conciliación
+    documento_et = models.FileField(upload_to='conciliaciones/', blank=True, null=True)
+    respuesta_definitiva_et = models.TextField(blank=True, null=True)
+    valor_definitivo = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    
+    # Estado de la conciliación
+    ESTADO_CONCILIACION_CHOICES = [
+        ('Pendiente', 'Pendiente de Resolución'),
+        ('Resuelta', 'Resuelta'),
+        ('Cancelada', 'Cancelada'),
+    ]
+    estado = models.CharField(max_length=20, choices=ESTADO_CONCILIACION_CHOICES, default='Pendiente')
+    
+    # Usuario que inició la conciliación
+    iniciada_por = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True)
+    
+    def __str__(self):
+        return f"Conciliación Glosa {self.glosa.id} - {self.get_estado_display()}"

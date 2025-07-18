@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+{% block title %}Segunda Decisión de Glosa{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">Segunda Decisión de la ET sobre Glosa #{{ glosa.id }}</h4>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Factura:</dt>
+                        <dd class="col-sm-8">{{ glosa.factura.numero }} (CUFE: {{ glosa.factura.cufe }})</dd>
+
+                        <dt class="col-sm-4">Valor Glosado Original:</dt>
+                        <dd class="col-sm-8">${{ glosa.valor_glosado|floatformat:2 }}</dd>
+
+                        <dt class="col-sm-4">Descripción Glosa:</dt>
+                        <dd class="col-sm-8">{{ glosa.descripcion }}</dd>
+
+                        <h5 class="mt-4">Primera Respuesta de IPS</h5>
+                        <dt class="col-sm-4">Fecha Primera Respuesta:</dt>
+                        <dd class="col-sm-8">{{ glosa.fecha_respuesta|date:"Y-m-d"|default:"N/A" }}</dd>
+
+                        <dt class="col-sm-4">IPS Aceptó Glosa:</dt>
+                        <dd class="col-sm-8">{% if glosa.aceptada %}Sí{% elif glosa.aceptada == False %}No{% else %}N/A{% endif %}</dd>
+
+                        {% if glosa.aceptada == False %}
+                        <dt class="col-sm-4">Valor Parcial Propuesto por IPS:</dt>
+                        <dd class="col-sm-8">
+                            {% if glosa.valor_aceptado_et %}
+                                <span class="badge bg-info">${{ glosa.valor_aceptado_et|floatformat:2 }}</span>
+                                <br><small class="text-muted">Valor original: ${{ glosa.valor_glosado|floatformat:2 }}</small>
+                            {% else %}
+                                <span class="text-muted">No propuso valor parcial</span>
+                            {% endif %}
+                        </dd>
+                        {% endif %}
+
+                        <dt class="col-sm-4">Descripción Primera Respuesta:</dt>
+                        <dd class="col-sm-8">{{ glosa.descripcion_respuesta|default:"N/A" }}</dd>
+
+                        <h5 class="mt-4">Primera Decisión de ET</h5>
+                        <dt class="col-sm-4">Fecha Primera Decisión ET:</dt>
+                        <dd class="col-sm-8">{{ glosa.fecha_decision_et|date:"Y-m-d"|default:"N/A" }}</dd>
+
+                        <dt class="col-sm-4">Justificación Primera ET:</dt>
+                        <dd class="col-sm-8">{{ glosa.decision_et_justificacion|default:"N/A" }}</dd>
+
+                        <!-- Debug: Mostrar información de valor parcial de primera decisión ET -->
+                        <dt class="col-sm-4">Valor Parcial Establecido por ET:</dt>
+                        <dd class="col-sm-8">
+                            {% if glosa.valor_parcial_et_primera %}
+                                <span class="badge bg-warning">${{ glosa.valor_parcial_et_primera|floatformat:2 }}</span>
+                                <br><small class="text-muted">Valor original: ${{ glosa.valor_glosado|floatformat:2 }}</small>
+                            {% else %}
+                                <span class="text-muted">No estableció valor parcial</span>
+                                <br><small class="text-muted">Debug: valor_aceptado_et = {{ glosa.valor_aceptado_et }}, valor_parcial_et_primera = {{ glosa.valor_parcial_et_primera }}</small>
+                            {% endif %}
+                        </dd>
+
+                        <h5 class="mt-4">Segunda Respuesta de IPS</h5>
+                        <dt class="col-sm-4">Fecha Segunda Respuesta:</dt>
+                        <dd class="col-sm-8">{{ glosa.fecha_respuesta_segunda|date:"Y-m-d"|default:"N/A" }}</dd>
+
+                        <dt class="col-sm-4">IPS Aceptó Glosa (Segunda):</dt>
+                        <dd class="col-sm-8">{% if glosa.aceptada_segunda %}Sí{% elif glosa.aceptada_segunda == False %}No{% else %}N/A{% endif %}</dd>
+
+                        <dt class="col-sm-4">Descripción Segunda Respuesta:</dt>
+                        <dd class="col-sm-8">{{ glosa.descripcion_respuesta_segunda|default:"N/A" }}</dd>
+
+                        {% if glosa.valor_parcial_segunda %}
+                        <dt class="col-sm-4">Valor Parcial Propuesto:</dt>
+                        <dd class="col-sm-8">${{ glosa.valor_parcial_segunda|floatformat:2 }}</dd>
+                        {% endif %}
+
+                        {% if glosa.tipo_glosa_respuesta_segunda %}
+                        <dt class="col-sm-4">Códigos Segunda Respuesta IPS:</dt>
+                        <dd class="col-sm-8">
+                            <strong>{{ glosa.tipo_glosa_respuesta_segunda.codigo }}</strong> - {{ glosa.tipo_glosa_respuesta_segunda.nombre }}
+                            {% if glosa.subtipo_glosa_respuesta_segunda %}
+                                <br><small class="text-muted">Subtipo: {{ glosa.subtipo_glosa_respuesta_segunda.codigo }} - {{ glosa.subtipo_glosa_respuesta_segunda.nombre }}</small>
+                            {% endif %}
+                        </dd>
+                        {% endif %}
+                    </dl>
+
+                    <!-- Resumen de Valores -->
+                    <div class="alert alert-info mt-3">
+                        <h6><i class="bi bi-info-circle"></i> Resumen de Valores Parciales:</h6>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <strong>Valor Original:</strong><br>
+                                <span class="badge bg-secondary">${{ glosa.valor_glosado|floatformat:2 }}</span>
+                            </div>
+                            {% if glosa.aceptada == False and glosa.valor_aceptado_et %}
+                            <div class="col-md-3">
+                                <strong>Propuesto por IPS:</strong><br>
+                                <span class="badge bg-info">${{ glosa.valor_aceptado_et|floatformat:2 }}</span>
+                            </div>
+                            {% endif %}
+                            {% if glosa.valor_parcial_et_primera %}
+                            <div class="col-md-3">
+                                <strong>Establecido por ET:</strong><br>
+                                <span class="badge bg-warning">${{ glosa.valor_parcial_et_primera|floatformat:2 }}</span>
+                            </div>
+                            {% endif %}
+                            {% if glosa.valor_parcial_segunda %}
+                            <div class="col-md-3">
+                                <strong>Propuesto por IPS (2da):</strong><br>
+                                <span class="badge bg-success">${{ glosa.valor_parcial_segunda|floatformat:2 }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h5 class="mt-4">Segunda Decisión (ET/Auditor)</h5>
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Códigos de Respuesta de ET -->
+                        <div class="mb-3">
+                            <label for="tipo_glosa_respuesta_et_segunda" class="form-label">Tipo de Respuesta ET:</label>
+                            <select class="form-select" id="tipo_glosa_respuesta_et_segunda" name="tipo_glosa_respuesta_et_segunda" required>
+                                <option value="">Seleccione un tipo de respuesta</option>
+                                {% for tipo in tipos_respuesta %}
+                                    <option value="{{ tipo.pk }}">{{ tipo.codigo }} - {{ tipo.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="subtipo_glosa_respuesta_et_segunda" class="form-label">Subtipo de Respuesta ET:</label>
+                            <select class="form-select" id="subtipo_glosa_respuesta_et_segunda" name="subtipo_glosa_respuesta_et_segunda" required>
+                                <option value="">Seleccione un subtipo</option>
+                            </select>
+                        </div>
+
+                        <!-- Pago Parcial -->
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="pago_parcial_segunda" name="pago_parcial_segunda">
+                                <label class="form-check-label" for="pago_parcial_segunda">
+                                    <strong>Activar Pago Parcial</strong>
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">Si activa esta opción, puede especificar un nuevo valor para la glosa.</small>
+                        </div>
+
+                        <div class="mb-3" id="valor_parcial_segunda_container" style="display: none;">
+                            <label for="valor_parcial_segunda" class="form-label">Nuevo Valor de la Glosa:</label>
+                            <input type="number" class="form-control" id="valor_parcial_segunda" name="valor_parcial_segunda" step="0.01" placeholder="Ej: 50000.00">
+                            <small class="form-text text-muted">Valor original: ${{ glosa.valor_glosado|floatformat:2 }}</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="decision_et_segunda" class="form-label">Decisión Final:</label>
+                            <select class="form-select" id="decision_et_segunda" name="decision_et_segunda" required>
+                                <option value="">Seleccione una opción</option>
+                                <option value="aceptar_respuesta_ips">Aceptar Segunda Respuesta de IPS (Levantar Glosa)</option>
+                                <option value="rechazar_respuesta_ips">Rechazar Segunda Respuesta de IPS (Ir a Conciliación)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="justificacion_et_segunda" class="form-label">Justificación de la Decisión Final:</label>
+                            <textarea class="form-control" id="justificacion_et_segunda" name="justificacion_et_segunda" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="valor_aceptado_et_segunda" class="form-label">Valor Final Aceptado por ET:</label>
+                            <input type="number" class="form-control" id="valor_aceptado_et_segunda" name="valor_aceptado_et_segunda" step="0.01" placeholder="Ej: 0.00 para glosa levantada, o el valor final si es parcial">
+                            <small class="form-text text-muted">Deja en blanco si la decisión no implica un ajuste de valor.</small>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-danger">Guardar Decisión Final</button>
+                        <a href="{% url 'auditoria:glosas_pendientes' %}" class="btn btn-secondary">Cancelar</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Script para manejar el checkbox de pago parcial
+document.getElementById('pago_parcial_segunda').addEventListener('change', function() {
+    const valorParcialContainer = document.getElementById('valor_parcial_segunda_container');
+    const valorParcialInput = document.getElementById('valor_parcial_segunda');
+    
+    if (this.checked) {
+        valorParcialContainer.style.display = 'block';
+        valorParcialInput.required = true;
+    } else {
+        valorParcialContainer.style.display = 'none';
+        valorParcialInput.required = false;
+        valorParcialInput.value = '';
+    }
+});
+
+// Script para cargar subtipos dinámicamente
+document.getElementById('tipo_glosa_respuesta_et_segunda').addEventListener('change', function() {
+    const tipoId = this.value;
+    const subtipoSelect = document.getElementById('subtipo_glosa_respuesta_et_segunda');
+    
+    // Limpiar opciones actuales
+    subtipoSelect.innerHTML = '<option value="">Seleccione un subtipo</option>';
+    
+    if (tipoId) {
+        // Hacer petición AJAX para obtener subtipos
+        fetch(`/auditoria/api/subtipos_respuesta/${tipoId}/`)
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(subtipo => {
+                    const option = document.createElement('option');
+                    option.value = subtipo.pk;
+                    option.textContent = `${subtipo.codigo} - ${subtipo.nombre}`;
+                    subtipoSelect.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error cargando subtipos:', error);
+            });
+    }
+});
+</script>
+{% endblock %} 

@@ -99,22 +99,22 @@ class CuentaCartera(models.Model):
         
         # Calcular glosas provisionales (pendientes o en proceso)
         glosas_provisionales = glosas.filter(
-            estado__in=['Pendiente', 'Respondida IPS', 'Devuelta a IPS']
+            estado__in=['Pendiente', 'Respondida IPS', 'Devuelta a IPS', 'Respondida IPS Segunda', 'En Conciliación']
         )
         self.valor_glosado_provisional = sum(g.valor_glosado for g in glosas_provisionales) or Decimal('0')
         
         # Calcular glosas definitivas (con decisión final de ET)
-        glosas_definitivas = glosas.filter(estado__in=['Aceptada ET', 'Rechazada ET'])
+        glosas_definitivas = glosas.filter(estado__in=['Aceptada ET', 'Conciliada'])
         
         valor_definitivo = Decimal('0')
         for glosa in glosas_definitivas:
-            if glosa.estado == 'Rechazada ET':
-                # ET rechaza respuesta IPS = glosa válida, se descuenta valor completo
-                valor_definitivo += glosa.valor_glosado
-            elif glosa.estado == 'Aceptada ET':
+            if glosa.estado == 'Aceptada ET':
                 # ET acepta respuesta IPS = se descuenta solo valor_aceptado_et
                 # Si valor_aceptado_et es 0, la glosa se levanta (no se descuenta)
                 valor_definitivo += glosa.valor_aceptado_et or Decimal('0')
+            elif glosa.estado == 'Conciliada':
+                # Glosa conciliada = se descuenta el valor definitivo establecido
+                valor_definitivo += glosa.valor_aceptado_et_segunda or Decimal('0')
         
         self.valor_glosado_definitivo = valor_definitivo
         

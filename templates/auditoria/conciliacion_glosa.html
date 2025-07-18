@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block title %}Conciliación de Glosa{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h4 class="mb-0">Conciliación de Glosa #{{ glosa.id }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <h6><i class="bi bi-exclamation-triangle"></i> Proceso de Conciliación</h6>
+                        <p class="mb-0">Esta glosa ha sido enviada a conciliación debido a desacuerdos entre la ET y la IPS. 
+                        La ET debe proporcionar una respuesta definitiva y un valor final para resolver el conflicto.</p>
+                    </div>
+
+                    <dl class="row">
+                        <dt class="col-sm-4">Factura:</dt>
+                        <dd class="col-sm-8">{{ glosa.factura.numero }} (CUFE: {{ glosa.factura.cufe }})</dd>
+
+                        <dt class="col-sm-4">Valor Glosado Original:</dt>
+                        <dd class="col-sm-8">${{ glosa.valor_glosado|floatformat:2 }}</dd>
+
+                        <dt class="col-sm-4">Descripción Glosa:</dt>
+                        <dd class="col-sm-8">{{ glosa.descripcion }}</dd>
+
+                        <h5 class="mt-4">Historial de Respuestas</h5>
+                        <dt class="col-sm-4">Primera Respuesta IPS:</dt>
+                        <dd class="col-sm-8">
+                            {% if glosa.aceptada %}Aceptó{% elif glosa.aceptada == False %}Rechazó{% else %}No definida{% endif %}
+                            ({{ glosa.fecha_respuesta|date:"Y-m-d" }})
+                        </dd>
+
+                        <dt class="col-sm-4">Primera Decisión ET:</dt>
+                        <dd class="col-sm-8">
+                            {% if glosa.estado == 'Rechazada ET' %}Rechazó respuesta IPS{% else %}Aceptó respuesta IPS{% endif %}
+                            ({{ glosa.fecha_decision_et|date:"Y-m-d" }})
+                        </dd>
+
+                        <dt class="col-sm-4">Segunda Respuesta IPS:</dt>
+                        <dd class="col-sm-8">
+                            {% if glosa.aceptada_segunda %}Aceptó{% elif glosa.aceptada_segunda == False %}Rechazó{% else %}No definida{% endif %}
+                            ({{ glosa.fecha_respuesta_segunda|date:"Y-m-d" }})
+                        </dd>
+
+                        <dt class="col-sm-4">Segunda Decisión ET:</dt>
+                        <dd class="col-sm-8">
+                            Rechazó segunda respuesta IPS - Enviado a Conciliación
+                            ({{ glosa.fecha_decision_et_segunda|date:"Y-m-d" }})
+                        </dd>
+
+                        {% if conciliacion.fecha_inicio %}
+                        <dt class="col-sm-4">Fecha Inicio Conciliación:</dt>
+                        <dd class="col-sm-8">{{ conciliacion.fecha_inicio|date:"Y-m-d H:i" }}</dd>
+                        {% endif %}
+
+                        {% if conciliacion.iniciada_por %}
+                        <dt class="col-sm-4">Iniciada por:</dt>
+                        <dd class="col-sm-8">{{ conciliacion.iniciada_por.get_full_name|default:conciliacion.iniciada_por.username }}</dd>
+                        {% endif %}
+                    </dl>
+
+                    <hr>
+
+                    <h5 class="mt-4">Resolución Definitiva (ET/Auditor)</h5>
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="respuesta_definitiva_et" class="form-label">Respuesta Definitiva de la ET:</label>
+                            <textarea class="form-control" id="respuesta_definitiva_et" name="respuesta_definitiva_et" rows="4" required 
+                                      placeholder="Describa la resolución definitiva de la conciliación..."></textarea>
+                            <small class="form-text text-muted">Esta será la respuesta final y vinculante para resolver el conflicto.</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="valor_definitivo" class="form-label">Valor Definitivo de la Glosa:</label>
+                            <input type="number" class="form-control" id="valor_definitivo" name="valor_definitivo" 
+                                   step="0.01" placeholder="0.00" required>
+                            <small class="form-text text-muted">
+                                <strong>$0.00</strong> = Glosa levantada (se debe pagar todo)<br>
+                                <strong>Otro valor</strong> = Glosa válida con descuento del valor especificado
+                            </small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="documento_et" class="form-label">Documento de Soporte (Opcional):</label>
+                            <input type="file" class="form-control" id="documento_et" name="documento_et" 
+                                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                            <small class="form-text text-muted">Puede adjuntar documentos que respalden la decisión definitiva.</small>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h6><i class="bi bi-info-circle"></i> Importante:</h6>
+                            <ul class="mb-0">
+                                <li>Esta decisión es <strong>definitiva y vinculante</strong></li>
+                                <li>Se actualizará automáticamente la cartera según el valor definitivo</li>
+                                <li>El historial de la glosa registrará esta resolución</li>
+                                <li>No se podrán hacer más cambios después de esta decisión</li>
+                            </ul>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-dark">Resolver Conciliación</button>
+                        <a href="{% url 'auditoria:glosas_pendientes' %}" class="btn btn-secondary">Cancelar</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Validación del formulario
+document.querySelector('form').addEventListener('submit', function(e) {
+    const valorDefinitivo = document.getElementById('valor_definitivo').value;
+    const respuestaDefinitiva = document.getElementById('respuesta_definitiva_et').value;
+    
+    if (!respuestaDefinitiva.trim()) {
+        e.preventDefault();
+        alert('Debe proporcionar una respuesta definitiva.');
+        return;
+    }
+    
+    if (valorDefinitivo === '' || isNaN(valorDefinitivo)) {
+        e.preventDefault();
+        alert('Debe proporcionar un valor definitivo válido.');
+        return;
+    }
+    
+    if (parseFloat(valorDefinitivo) < 0) {
+        e.preventDefault();
+        alert('El valor definitivo no puede ser negativo.');
+        return;
+    }
+    
+    // Confirmación final
+    if (!confirm('¿Está seguro de que desea resolver la conciliación con estos valores? Esta acción es definitiva.')) {
+        e.preventDefault();
+    }
+});
+</script>
+{% endblock %} 

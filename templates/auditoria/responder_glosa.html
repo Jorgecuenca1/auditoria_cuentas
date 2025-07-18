@@ -43,6 +43,23 @@
                 <option value="false" {% if glosa.aceptada == False %}selected{% endif %}>Rechazada</option>
             </select>
         </div>
+        
+        <!-- Opción de valor parcial cuando rechaza -->
+        <div class="mb-3" id="valor_parcial_ips_container" style="display: none;">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="pago_parcial_ips" name="pago_parcial_ips">
+                <label class="form-check-label" for="pago_parcial_ips">
+                    <strong>Proponer Valor Parcial</strong>
+                </label>
+            </div>
+            <small class="form-text text-muted">Si rechaza la glosa, puede proponer un valor parcial para negociación.</small>
+        </div>
+
+        <div class="mb-3" id="valor_parcial_ips_input_container" style="display: none;">
+            <label for="valor_parcial_ips" class="form-label">Valor Parcial Propuesto:</label>
+            <input type="number" class="form-control" id="valor_parcial_ips" name="valor_parcial_ips" step="0.01" placeholder="Ej: 50000.00">
+            <small class="form-text text-muted">Valor original glosado: ${{ glosa.valor_glosado|floatformat:2 }}</small>
+        </div>
         {% endif %}
 
         <button type="submit" class="btn btn-success"><i class="bi bi-send"></i> Enviar Respuesta</button>
@@ -55,7 +72,13 @@
 document.addEventListener('DOMContentLoaded', function() {
     const tipoRespuestaSelect = document.getElementById('tipo_glosa_respuesta');
     const subtipoRespuestaSelect = document.getElementById('subtipo_glosa_respuesta');
+    const decisionGlosaSelect = document.getElementById('decision_glosa');
+    const valorParcialContainer = document.getElementById('valor_parcial_ips_container');
+    const valorParcialInputContainer = document.getElementById('valor_parcial_ips_input_container');
+    const pagoParcialCheckbox = document.getElementById('pago_parcial_ips');
+    const valorParcialInput = document.getElementById('valor_parcial_ips');
 
+    // Manejar cambio en tipo de respuesta
     tipoRespuestaSelect.addEventListener('change', function() {
         const tipoId = this.value;
         subtipoRespuestaSelect.innerHTML = '<option value="">Cargando...</option>';
@@ -74,6 +97,36 @@ document.addEventListener('DOMContentLoaded', function() {
             subtipoRespuestaSelect.innerHTML = '<option value="">Seleccione un subtipo</option>';
         }
     });
+
+    // Manejar cambio en decisión de glosa
+    if (decisionGlosaSelect) {
+        decisionGlosaSelect.addEventListener('change', function() {
+            if (this.value === 'false') {
+                // Si rechaza, mostrar opción de valor parcial
+                valorParcialContainer.style.display = 'block';
+            } else {
+                // Si acepta o no decide, ocultar opción de valor parcial
+                valorParcialContainer.style.display = 'none';
+                valorParcialInputContainer.style.display = 'none';
+                pagoParcialCheckbox.checked = false;
+                valorParcialInput.value = '';
+            }
+        });
+    }
+
+    // Manejar checkbox de pago parcial
+    if (pagoParcialCheckbox) {
+        pagoParcialCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                valorParcialInputContainer.style.display = 'block';
+                valorParcialInput.required = true;
+            } else {
+                valorParcialInputContainer.style.display = 'none';
+                valorParcialInput.required = false;
+                valorParcialInput.value = '';
+            }
+        });
+    }
 });
 </script>
 {% endblock %}
